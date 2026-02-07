@@ -96,96 +96,84 @@ class AccessibilityMonitor: ObservableObject {
         // Get all UI elements recursively
         let elements = getAllElements(from: window)
         
-        // Parse the text elements to extract data
+        // Parse the text elements to extract data - try multiple attributes
         var texts: [String] = []
+        var seenTexts = Set<String>()  // Avoid duplicates
+        
         for element in elements {
-            var roleValue: CFTypeRef?
-            AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+            // Try to get text from various attributes
+            let attributes = [
+                kAXValueAttribute,
+                kAXTitleAttribute,
+                kAXDescriptionAttribute,
+                kAXHelpAttribute
+            ]
             
-            if let role = roleValue as? String, 
-               role == kAXStaticTextRole as String || role == kAXTextFieldRole as String {
+            for attr in attributes {
                 var textValue: CFTypeRef?
-                AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &textValue)
-                if let text = textValue as? String, !text.isEmpty {
+                AXUIElementCopyAttributeValue(element, attr as CFString, &textValue)
+                if let text = textValue as? String, !text.isEmpty, !seenTexts.contains(text) {
                     texts.append(text)
+                    seenTexts.insert(text)
                 }
             }
         }
         
-        // Parse extracted texts
-        // LuLu alert format: labels and values appear as separate text elements
-        // Labels: "pid:", "args:", "path:", "ip address:", "port/protocol:", "(reverse) dns:"
-        // Values follow immediately after their labels
+        // Parse extracted texts using pattern matching
+        // LuLu alert elements come in unpredictable order, so match by content pattern
         
         print("DEBUG: Extracted \(texts.count) text elements from LuLu alert")
         for (i, t) in texts.enumerated() {
             print("  [\(i)] \(t)")
         }
         
-        for (index, text) in texts.enumerated() {
+        for text in texts {
             let trimmed = text.trimmingCharacters(in: .whitespaces)
-            let lowercased = trimmed.lowercased()
             
-            // Label-based detection: look for label and get next element as value
-            if lowercased == "pid:" && index + 1 < texts.count {
-                alert.processID = texts[index + 1].trimmingCharacters(in: .whitespaces)
+            // Skip labels (they end with ":")
+            if trimmed.hasSuffix(":") { continue }
+            
+            // PID: 5-6 digit number
+            if trimmed.matches(pattern: "^\\d{4,6}$") && alert.processID.isEmpty {
+                alert.processID = trimmed
             }
-            else if lowercased == "args:" && index + 1 < texts.count {
-                alert.processArgs = texts[index + 1].trimmingCharacters(in: .whitespaces)
-            }
-            else if lowercased == "path:" && index + 1 < texts.count {
-                alert.processPath = texts[index + 1].trimmingCharacters(in: .whitespaces)
-                // Extract process name from path
-                if let name = alert.processPath.components(separatedBy: "/").last {
-                    alert.processName = name
-                }
-            }
-            else if lowercased == "ip address:" && index + 1 < texts.count {
-                alert.ipAddress = texts[index + 1].trimmingCharacters(in: .whitespaces)
-            }
-            else if lowercased == "port/protocol:" && index + 1 < texts.count {
-                let value = texts[index + 1].trimmingCharacters(in: .whitespaces)
-                // Parse "443 (TCP)" format
-                let parts = value.components(separatedBy: " ")
-                if let port = parts.first {
-                    alert.port = port
-                }
-                alert.proto = value.contains("TCP") ? "TCP" : "UDP"
-            }
-            else if (lowercased == "(reverse) dns:" || lowercased == "reverse dns:") && index + 1 < texts.count {
-                alert.reverseDNS = texts[index + 1].trimmingCharacters(in: .whitespaces)
-            }
-            // Fallback: IP address pattern without label
+            // IP address: x.x.x.x pattern
             else if trimmed.matches(pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$") && alert.ipAddress.isEmpty {
                 alert.ipAddress = trimmed
             }
-            // Fallback: Path pattern without label
-            else if trimmed.starts(with: "/") && trimmed.contains("/bin/") && alert.processPath.isEmpty {
+            // Port/Protocol: "443 (TCP)" or "80 (UDP)" pattern
+            else if trimmed.matches(pattern: "^\\d{1,5} \\((TCP|UDP)\\)$") {
+                let parts = trimmed.components(separatedBy: " ")
+                if let port = parts.first {
+                    alert.port = port
+                }
+                alert.proto = trimmed.contains("TCP") ? "TCP" : "UDP"
+            }
+            // Path: starts with / and contains typical path components
+            else if trimmed.starts(with: "/") && (trimmed.contains("/bin/") || trimmed.contains("/Applications/") || trimmed.contains("/Library/") || trimmed.contains("/Users/") || trimmed.contains("/usr/") || trimmed.contains("/System/")) {
                 alert.processPath = trimmed
-                if let name = trimmed.components(separatedBy: "/").last {
+                if let name = trimmed.components(separatedBy: "/").last, !name.isEmpty {
                     alert.processName = name
                 }
             }
-            // "is connecting to" message - extract process name
-            else if trimmed.contains("is connecting to") {
-                // The process name is usually the previous text element
-                if index > 0 && alert.processName.isEmpty {
-                    alert.processName = texts[index - 1].trimmingCharacters(in: .whitespaces)
-                }
-                if let endpoint = trimmed.components(separatedBy: "is connecting to ").last {
-                    let ep = endpoint.trimmingCharacters(in: .whitespaces)
-                    if alert.ipAddress.isEmpty && ep.matches(pattern: "\\d{1,3}\\.\\d{1,3}") {
-                        alert.ipAddress = ep
-                    }
-                }
+            // URL args: starts with http:// or https://
+            else if trimmed.starts(with: "http://") || trimmed.starts(with: "https://") {
+                alert.processArgs = trimmed
             }
-            // Reverse DNS fallback (contains dots, letters, ends with TLD)
-            else if trimmed.matches(pattern: "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") && alert.reverseDNS.isEmpty && !trimmed.starts(with: "/") {
-                alert.reverseDNS = trimmed
+            // Reverse DNS: hostname pattern (letters, dots, ends with TLD)
+            else if trimmed.matches(pattern: "^[a-zA-Z0-9.-]+\\.(com|net|org|io|co|dev|app|cloud|edu|gov|[a-z]{2})\\.*$") && alert.reverseDNS.isEmpty {
+                alert.reverseDNS = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            }
+            // Process name: single word, could be "curl", "Safari", etc. (after we've tried other patterns)
+            else if !trimmed.isEmpty && !trimmed.contains(" ") && !trimmed.contains("/") && !trimmed.contains(":") && trimmed.count < 50 {
+                // Only set if we don't have a process name from path
+                if alert.processName.isEmpty && trimmed != "Details & Options" && trimmed != "Process" && trimmed != "Connection" && trimmed != "LuLu Alert" && !trimmed.starts(with: "Time stamp") {
+                    alert.processName = trimmed
+                }
             }
         }
         
-        print("DEBUG: Parsed alert - pid:\(alert.processID), args:\(alert.processArgs), path:\(alert.processPath)")
+        print("DEBUG: Parsed alert - process:\(alert.processName), pid:\(alert.processID), path:\(alert.processPath), args:\(alert.processArgs), ip:\(alert.ipAddress), port:\(alert.port)")
         
         // Also try to get window title for process name
         var titleValue: CFTypeRef?
