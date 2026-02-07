@@ -222,12 +222,15 @@ class ClaudeAPIClient: ObservableObject {
             request.setValue("cli", forHTTPHeaderField: "x-app")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             print("AUTH MODE: OAuth (Bearer token)")
-            print("Headers: Authorization=Bearer..., anthropic-beta=claude-code-20250219,oauth-2025-04-20")
         } else {
             // Regular API key - use x-api-key header
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
             print("AUTH MODE: API Key (x-api-key)")
         }
+        
+        // Debug: Print all headers
+        print("All headers:")
+        request.allHTTPHeaderFields?.forEach { print("  \($0.key): \($0.value)") }
         print("=========================")
         
         request.timeoutInterval = 30
@@ -246,6 +249,11 @@ class ClaudeAPIClient: ObservableObject {
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        // Debug: Print request body
+        if let bodyData = request.httpBody, let bodyString = String(data: bodyData, encoding: .utf8) {
+            print("Request body: \(bodyString)")
+        }
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
