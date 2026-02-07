@@ -227,21 +227,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - LuLu Window Monitor
     
     private func startLuLuWindowMonitor() {
-        // Wait a bit before starting to monitor (give time for analysis to begin)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        // Wait 5 seconds before starting to monitor (give time for LuLu to show its window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
             
-            // Check every 1 second if LuLu alert window is still visible
-            // Only auto-close if analysis is DONE (not loading)
-            self.luluWindowMonitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            print("[DEBUG] Starting LuLu window monitor after 5s delay")
+            
+            // Check every 2 seconds if LuLu alert window is still visible
+            self.luluWindowMonitorTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
                 guard let self = self else { return }
+                
+                let luluVisible = self.isLuLuAlertWindowVisible()
+                let analysisComplete = !(self.currentViewModel?.isLoadingAnalysis ?? true)
+                
+                print("[DEBUG] Monitor check: LuLu visible=\(luluVisible), analysis complete=\(analysisComplete)")
                 
                 // Only auto-close if:
                 // 1. LuLu window is gone AND
                 // 2. Analysis is complete (not loading)
-                let analysisComplete = !(self.currentViewModel?.isLoadingAnalysis ?? true)
-                
-                if !self.isLuLuAlertWindowVisible() && analysisComplete {
+                if !luluVisible && analysisComplete {
                     DispatchQueue.main.async {
                         self.luluWindowMonitorTimer?.invalidate()
                         self.luluWindowMonitorTimer = nil
@@ -250,7 +254,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                             window.close()
                             self.analysisWindow = nil
                             self.currentViewModel = nil
-                            print("[DEBUG] Auto-closed analysis window (LuLu alert dismissed + analysis complete)")
+                            print("[DEBUG] Auto-closed analysis window (LuLu dismissed + analysis done)")
                         }
                     }
                 }
@@ -259,25 +263,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func isLuLuAlertWindowVisible() -> Bool {
-        // Get all windows for LuLu app
-        let luluBundleId = "com.objective-see.lulu.app"
-        
-        guard let apps = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
             return false
         }
         
-        for app in apps {
-            if let ownerName = app[kCGWindowOwnerName as String] as? String,
+        for window in windows {
+            if let ownerName = window[kCGWindowOwnerName as String] as? String,
                ownerName.lowercased().contains("lulu") {
-                // Check if it's an alert window (not the main app window)
-                if let windowName = app[kCGWindowName as String] as? String,
-                   windowName.lowercased().contains("alert") || windowName.isEmpty {
-                    // Also check window size - LuLu alerts are typically small
-                    if let bounds = app[kCGWindowBounds as String] as? [String: CGFloat],
-                       let height = bounds["Height"], height < 400 {
-                        return true
-                    }
-                }
+                // Found a LuLu window - log details for debugging
+                let windowName = window[kCGWindowName as String] as? String ?? "(no name)"
+                let bounds = window[kCGWindowBounds as String] as? [String: Any]
+                let height = bounds?["Height"] as? CGFloat ?? 0
+                let width = bounds?["Width"] as? CGFloat ?? 0
+                print("[DEBUG] Found LuLu window: name='\(windowName)', size=\(width)x\(height)")
+                
+                // Any LuLu window counts as alert visible (simplified logic)
+                return true
             }
         }
         
