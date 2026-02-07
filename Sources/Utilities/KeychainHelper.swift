@@ -73,42 +73,14 @@ enum KeychainHelper {
         SecItemDelete(query as CFDictionary)
     }
     
-    // MARK: - Scan for Keys
+    // MARK: - Check Own Keys
     
-    /// Search for API keys across multiple possible keychain entries
-    static func findAnthropicKeys() -> [String] {
-        var keys: [String] = []
-        
-        // Common service names that might store Anthropic keys
-        let services = [
-            "com.lulu-ai-companion",
-            "com.openclaw",
-            "com.openclaw.anthropic",
-            "openclaw",
-            "anthropic",
-            "claude"
-        ]
-        
-        let keyNames = [
-            "api-key",
-            "apiKey",
-            "api_key",
-            "claude_api_key",
-            "anthropic_api_key",
-            "ANTHROPIC_API_KEY"
-        ]
-        
-        for service in services {
-            for keyName in keyNames {
-                if let key = get(service: service, key: keyName), 
-                   !key.isEmpty,
-                   key.hasPrefix("sk-ant-"),
-                   !keys.contains(key) {
-                    keys.append(key)
-                }
-            }
+    /// Check if we have any API keys in our own keychain (no cross-app access)
+    static func hasOwnAPIKeys() -> Bool {
+        if get(key: "claude_api_key") != nil { return true }
+        for i in 1...5 {
+            if get(key: "claude_api_key_\(i)") != nil { return true }
         }
-        
-        return keys
+        return false
     }
 }

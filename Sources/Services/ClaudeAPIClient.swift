@@ -18,40 +18,33 @@ class ClaudeAPIClient: ObservableObject {
     // MARK: - Multi-Key Management
     
     /// All configured API keys (from various sources)
+    /// Note: We only read from sources that don't require user confirmation prompts
     var apiKeys: [String] {
         var keys: [String] = []
         
-        // 1. Environment variable
+        // 1. Environment variable (no prompt)
         if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
             keys.append(envKey)
         }
         
-        // 2. OpenClaw keychain entries (try common patterns)
-        let openclawServices = [
-            "com.openclaw.anthropic",
-            "openclaw-anthropic",
-            "ai.openclaw"
-        ]
-        for service in openclawServices {
-            if let key = KeychainHelper.get(service: service, key: "api-key"), !key.isEmpty {
-                if !keys.contains(key) { keys.append(key) }
-            }
-        }
-        
-        // 3. Read from OpenClaw config file
+        // 2. Read from OpenClaw config file (no prompt - just file access)
+        // This reads ~/.openclaw/openclaw.json, not Keychain
         keys.append(contentsOf: readOpenClawKeys())
         
-        // 4. Our own keychain entries
+        // 3. Our own app's keychain entries (no prompt - same app)
         if let key = KeychainHelper.get(key: "claude_api_key"), !key.isEmpty {
             if !keys.contains(key) { keys.append(key) }
         }
         
-        // 5. Additional backup keys (users can add multiple)
+        // 4. Additional backup keys (users can add multiple)
         for i in 1...5 {
             if let key = KeychainHelper.get(key: "claude_api_key_\(i)"), !key.isEmpty {
                 if !keys.contains(key) { keys.append(key) }
             }
         }
+        
+        // Note: We intentionally don't read from other apps' Keychain
+        // because that would trigger a macOS permission prompt
         
         return keys
     }
