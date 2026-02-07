@@ -212,7 +212,7 @@ struct WelcomeView: View {
     }
     
     private var accessibilitySetupView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(systemName: monitor.accessibilityEnabled ? "checkmark.circle.fill" : "hand.raised.fill")
                 .font(.system(size: 48))
                 .foregroundColor(monitor.accessibilityEnabled ? .green : .orange)
@@ -229,7 +229,7 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
                 
-                Button("Open System Preferences") {
+                Button("Open System Settings") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
                 }
                 .buttonStyle(.borderedProminent)
@@ -238,6 +238,37 @@ struct WelcomeView: View {
                     _ = monitor.checkAccessibilityPermission()
                 }
                 .buttonStyle(.bordered)
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                // Important note for users who updated the app
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Updated the app?")
+                            .fontWeight(.medium)
+                    }
+                    .font(.caption)
+                    
+                    Text("If you previously granted permission to an older version, you need to:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("1. Find \"LuLuAICompanion\" in the list")
+                        Text("2. Select it and click the \"-\" button to remove")
+                        Text("3. Click \"+\" and re-add the app from /Applications")
+                        Text("4. Toggle the switch ON")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 16)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
             }
         }
     }
