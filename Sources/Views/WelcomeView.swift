@@ -91,7 +91,7 @@ struct WelcomeView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 480)
+        .frame(width: 500, height: 580)
         .onAppear {
             checkForExistingKeys()
         }
