@@ -178,7 +178,15 @@ struct AnalysisView: View {
                 GroupBox("Connection Details") {
                     VStack(alignment: .leading, spacing: 8) {
                         DetailRow(label: "Process", value: viewModel.alert.processName)
-                        DetailRow(label: "Path", value: viewModel.alert.processPath)
+                        if !viewModel.alert.processID.isEmpty {
+                            DetailRow(label: "PID", value: viewModel.alert.processID)
+                        }
+                        if !viewModel.alert.processPath.isEmpty {
+                            DetailRow(label: "Path", value: viewModel.alert.processPath)
+                        }
+                        if !viewModel.alert.processArgs.isEmpty {
+                            DetailRow(label: "Args", value: viewModel.alert.processArgs)
+                        }
                         DetailRow(label: "Destination", value: "\(viewModel.alert.ipAddress):\(viewModel.alert.port)")
                         DetailRow(label: "Protocol", value: viewModel.alert.proto)
                         

@@ -113,55 +113,79 @@ class AccessibilityMonitor: ObservableObject {
         }
         
         // Parse extracted texts
-        // LuLu alert format based on source code:
-        // - Process name is prominent
-        // - "is connecting to [endpoint]"
-        // - Details section has: pid, args, path, ip address, port/protocol, reverse dns
+        // LuLu alert format: labels and values appear as separate text elements
+        // Labels: "pid:", "args:", "path:", "ip address:", "port/protocol:", "(reverse) dns:"
+        // Values follow immediately after their labels
+        
+        print("DEBUG: Extracted \(texts.count) text elements from LuLu alert")
+        for (i, t) in texts.enumerated() {
+            print("  [\(i)] \(t)")
+        }
         
         for (index, text) in texts.enumerated() {
-            let lowercased = text.lowercased()
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            let lowercased = trimmed.lowercased()
             
-            // IP address pattern
-            if text.matches(pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$") {
-                alert.ipAddress = text
+            // Label-based detection: look for label and get next element as value
+            if lowercased == "pid:" && index + 1 < texts.count {
+                alert.processID = texts[index + 1].trimmingCharacters(in: .whitespaces)
             }
-            // Port/Protocol (e.g., "443 (TCP)")
-            else if text.contains("(TCP)") || text.contains("(UDP)") {
-                let parts = text.components(separatedBy: " ")
+            else if lowercased == "args:" && index + 1 < texts.count {
+                alert.processArgs = texts[index + 1].trimmingCharacters(in: .whitespaces)
+            }
+            else if lowercased == "path:" && index + 1 < texts.count {
+                alert.processPath = texts[index + 1].trimmingCharacters(in: .whitespaces)
+                // Extract process name from path
+                if let name = alert.processPath.components(separatedBy: "/").last {
+                    alert.processName = name
+                }
+            }
+            else if lowercased == "ip address:" && index + 1 < texts.count {
+                alert.ipAddress = texts[index + 1].trimmingCharacters(in: .whitespaces)
+            }
+            else if lowercased == "port/protocol:" && index + 1 < texts.count {
+                let value = texts[index + 1].trimmingCharacters(in: .whitespaces)
+                // Parse "443 (TCP)" format
+                let parts = value.components(separatedBy: " ")
                 if let port = parts.first {
                     alert.port = port
                 }
-                alert.proto = text.contains("TCP") ? "TCP" : "UDP"
+                alert.proto = value.contains("TCP") ? "TCP" : "UDP"
             }
-            // Process ID
-            else if lowercased.contains("pid:") || text.matches(pattern: "^\\d{3,6}$") {
-                if let match = text.matches(pattern: "\\d+") {
-                    alert.processID = match
+            else if (lowercased == "(reverse) dns:" || lowercased == "reverse dns:") && index + 1 < texts.count {
+                alert.reverseDNS = texts[index + 1].trimmingCharacters(in: .whitespaces)
+            }
+            // Fallback: IP address pattern without label
+            else if trimmed.matches(pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$") && alert.ipAddress.isEmpty {
+                alert.ipAddress = trimmed
+            }
+            // Fallback: Path pattern without label
+            else if trimmed.starts(with: "/") && trimmed.contains("/bin/") && alert.processPath.isEmpty {
+                alert.processPath = trimmed
+                if let name = trimmed.components(separatedBy: "/").last {
+                    alert.processName = name
                 }
             }
-            // Path detection
-            else if text.starts(with: "/") && text.contains("/") {
-                if text.contains(".app") || text.contains("/bin/") || text.contains("/Library/") {
-                    alert.processPath = text
-                    // Extract process name from path
-                    if let name = text.components(separatedBy: "/").last {
-                        alert.processName = name
+            // "is connecting to" message - extract process name
+            else if trimmed.contains("is connecting to") {
+                // The process name is usually the previous text element
+                if index > 0 && alert.processName.isEmpty {
+                    alert.processName = texts[index - 1].trimmingCharacters(in: .whitespaces)
+                }
+                if let endpoint = trimmed.components(separatedBy: "is connecting to ").last {
+                    let ep = endpoint.trimmingCharacters(in: .whitespaces)
+                    if alert.ipAddress.isEmpty && ep.matches(pattern: "\\d{1,3}\\.\\d{1,3}") {
+                        alert.ipAddress = ep
                     }
                 }
             }
-            // "is connecting to" message
-            else if text.contains("is connecting to") {
-                if let endpoint = text.components(separatedBy: "is connecting to ").last {
-                    if alert.ipAddress.isEmpty {
-                        alert.ipAddress = endpoint.trimmingCharacters(in: .whitespaces)
-                    }
-                }
-            }
-            // Reverse DNS (usually contains dots and letters)
-            else if text.contains(".") && text.matches(pattern: "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") {
-                alert.reverseDNS = text
+            // Reverse DNS fallback (contains dots, letters, ends with TLD)
+            else if trimmed.matches(pattern: "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") && alert.reverseDNS.isEmpty && !trimmed.starts(with: "/") {
+                alert.reverseDNS = trimmed
             }
         }
+        
+        print("DEBUG: Parsed alert - pid:\(alert.processID), args:\(alert.processArgs), path:\(alert.processPath)")
         
         // Also try to get window title for process name
         var titleValue: CFTypeRef?
