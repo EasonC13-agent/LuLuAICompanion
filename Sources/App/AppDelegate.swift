@@ -97,21 +97,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func handleLuLuAlert(_ notification: Notification) {
-        guard var alert = notification.userInfo?["alert"] as? ConnectionAlert else { return }
+        guard let alert = notification.userInfo?["alert"] as? ConnectionAlert else { return }
         
         Task {
             // Enrich the alert with WHOIS/geo data
-            await EnrichmentService.shared.enrichAlert(&alert)
+            let enrichedAlert = await EnrichmentService.shared.enrichAlert(alert)
             
             // Analyze with Claude
             if claudeClient.hasAPIKey {
                 do {
-                    let analysis = try await claudeClient.analyzeConnection(alert)
+                    let analysis = try await claudeClient.analyzeConnection(enrichedAlert)
                     await showAnalysisWindow(analysis)
                 } catch {
                     print("Analysis error: \(error)")
                     await showAnalysisWindow(AIAnalysis(
-                        alert: alert,
+                        alert: enrichedAlert,
                         recommendation: .unknown,
                         summary: "Analysis failed",
                         details: error.localizedDescription
@@ -119,7 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } else {
                 await showAnalysisWindow(AIAnalysis(
-                    alert: alert,
+                    alert: enrichedAlert,
                     recommendation: .unknown,
                     summary: "No API key configured",
                     details: "Add your Claude API key in settings to enable AI analysis."

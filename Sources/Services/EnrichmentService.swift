@@ -128,18 +128,28 @@ class EnrichmentService {
     
     // MARK: - Full Enrichment
     
-    func enrichAlert(_ alert: inout ConnectionAlert) async {
-        // Run all lookups concurrently
-        async let whois = fetchWHOIS(for: alert.ipAddress)
-        async let geo = fetchGeoLocation(for: alert.ipAddress)
-        async let reverseDNS = alert.reverseDNS.isEmpty ? fetchReverseDNS(for: alert.ipAddress) : nil
+    /// Enrich alert with additional data. Returns a new enriched copy.
+    func enrichAlert(_ alert: ConnectionAlert) async -> ConnectionAlert {
+        var enrichedAlert = alert
         
-        let results = await (whois, geo, reverseDNS)
+        // Extract IP address before async operations
+        let ipAddress = alert.ipAddress
+        let needsReverseDNS = alert.reverseDNS.isEmpty
         
-        alert.whoisData = results.0
-        alert.geoLocation = results.1
-        if let dns = results.2 {
-            alert.reverseDNS = dns
+        // Run lookups concurrently
+        async let whoisTask = fetchWHOIS(for: ipAddress)
+        async let geoTask = fetchGeoLocation(for: ipAddress)
+        async let reverseDNSTask: String? = needsReverseDNS ? fetchReverseDNS(for: ipAddress) : nil
+        
+        // Await all results
+        let (whois, geo, reverseDNS) = await (whoisTask, geoTask, reverseDNSTask)
+        
+        enrichedAlert.whoisData = whois
+        enrichedAlert.geoLocation = geo
+        if let dns = reverseDNS {
+            enrichedAlert.reverseDNS = dns
         }
+        
+        return enrichedAlert
     }
 }
