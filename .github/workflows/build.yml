@@ -53,7 +53,14 @@ jobs:
           # Verify the p12 can be read with openssl first
           openssl pkcs12 -info -in "$CERT_PATH" -passin pass:"$CERTIFICATE_PASSWORD" -noout 2>&1 || echo "OpenSSL verify failed"
           
-          security import "$CERT_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          # Debug: try converting p12 with openssl to re-export with known format
+          openssl pkcs12 -in "$CERT_PATH" -passin pass:"$CERTIFICATE_PASSWORD" -nodes -out /tmp/cert.pem 2>&1
+          openssl pkcs12 -export -in /tmp/cert.pem -out /tmp/cert-new.p12 -passout pass:temp123 2>&1
+          
+          echo "Re-exported cert size: $(wc -c < /tmp/cert-new.p12)"
+          
+          # Try importing the re-exported cert
+          security import /tmp/cert-new.p12 -P "temp123" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
           
           # Allow codesign to access keychain
