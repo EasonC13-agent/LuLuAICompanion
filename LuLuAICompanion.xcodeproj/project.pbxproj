@@ -11,8 +11,10 @@
 		34A99363807C5F50E69F9E73 /* ClaudeAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C48C2C3BEE9F8235A7755B /* ClaudeAPIClient.swift */; };
 		3C4EB16CEC2C60C26168CDA6 /* AIAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F84F1C2DAFB06C16F9F7F85 /* AIAnalysis.swift */; };
 		3CE49BB4DE891BFDFD3C6C13 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981BEDAEAAED8B448FA8716E /* SettingsView.swift */; };
+		719F369C602D24B40A65C917 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE5D912B5382A17561D4110 /* WelcomeView.swift */; };
 		772670C59907CB2008F8B6F8 /* EnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AB4A5220A9D793648D1BB /* EnrichmentService.swift */; };
 		84B5667B845848143C8DBE7D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20B9210262ECA384DF02E4A /* KeychainHelper.swift */; };
+		9C8404F977DB3AE1CA59FAA5 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE24BBB7C3C6CC05171B8E38 /* main.swift */; };
 		9D6997E9DE664842C690FE06 /* ConnectionAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F41B9136EA84FD2684C2513 /* ConnectionAlert.swift */; };
 		D28F7A75D4FEC81088797E23 /* LuLuAICompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */; };
 		D5197E57327BA2145A61344E /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */; };
@@ -28,9 +30,11 @@
 		31C48C2C3BEE9F8235A7755B /* ClaudeAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIClient.swift; sourceTree = "<group>"; };
 		39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
 		500BB17652AB3FD79E5A1774 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		7AE5D912B5382A17561D4110 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		981BEDAEAAED8B448FA8716E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LuLuAICompanionApp.swift; sourceTree = "<group>"; };
 		ADAC6B06A5B3D48BBF5CE096 /* AccessibilityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityMonitor.swift; sourceTree = "<group>"; };
+		AE24BBB7C3C6CC05171B8E38 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		D20B9210262ECA384DF02E4A /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		F37AB4A5220A9D793648D1BB /* EnrichmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnrichmentService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -49,6 +53,7 @@
 			children = (
 				2D89D92734236EF52F13505E /* AppDelegate.swift */,
 				A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */,
+				AE24BBB7C3C6CC05171B8E38 /* main.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -71,6 +76,7 @@
 				39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */,
 				981BEDAEAAED8B448FA8716E /* SettingsView.swift */,
 				500BB17652AB3FD79E5A1774 /* StatusBarView.swift */,
+				7AE5D912B5382A17561D4110 /* WelcomeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -174,6 +180,8 @@
 				D28F7A75D4FEC81088797E23 /* LuLuAICompanionApp.swift in Sources */,
 				3CE49BB4DE891BFDFD3C6C13 /* SettingsView.swift in Sources */,
 				1F285F215051A3A6BB11BB5F /* StatusBarView.swift in Sources */,
+				719F369C602D24B40A65C917 /* WelcomeView.swift in Sources */,
+				9C8404F977DB3AE1CA59FAA5 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
