@@ -5,18 +5,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var analysisWindow: NSWindow?
+    private var welcomeWindow: NSWindow?
     
-    @ObservedObject private var monitor = AccessibilityMonitor.shared
-    @ObservedObject private var claudeClient = ClaudeAPIClient.shared
+    private let monitor = AccessibilityMonitor.shared
+    private let claudeClient = ClaudeAPIClient.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
         setupNotifications()
         
-        // Auto-start monitoring if accessibility is enabled
-        if monitor.checkAccessibilityPermission() {
-            monitor.startMonitoring()
+        // Check if first launch or needs setup
+        if !UserDefaults.standard.bool(forKey: "hasCompletedSetup") || !claudeClient.hasAPIKey {
+            showWelcomeWindow()
+        } else {
+            // Auto-start monitoring if accessibility is enabled
+            if monitor.checkAccessibilityPermission() {
+                monitor.startMonitoring()
+            }
         }
+    }
+    
+    // MARK: - Welcome Window
+    
+    private func showWelcomeWindow() {
+        let welcomeView = WelcomeView(onComplete: { [weak self] in
+            self?.welcomeWindow?.close()
+            self?.welcomeWindow = nil
+            
+            // Start monitoring after setup
+            if self?.monitor.checkAccessibilityPermission() == true {
+                self?.monitor.startMonitoring()
+            }
+        })
+        
+        welcomeWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 480),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        welcomeWindow?.title = "Welcome"
+        welcomeWindow?.contentView = NSHostingView(rootView: welcomeView)
+        welcomeWindow?.center()
+        welcomeWindow?.makeKeyAndOrderFront(nil)
+        
+        NSApp.activate(ignoringOtherApps: true)
     }
     
     // MARK: - Status Bar
@@ -33,7 +67,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.contentSize = NSSize(width: 320, height: 400)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: StatusBarView())
+        popover.contentViewController = NSHostingController(rootView: StatusBarView(
+            onShowWelcome: { [weak self] in
+                self?.popover.performClose(nil)
+                self?.showWelcomeWindow()
+            }
+        ))
     }
     
     @objc private func togglePopover() {
@@ -60,7 +99,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleLuLuAlert(_ notification: Notification) {
         guard var alert = notification.userInfo?["alert"] as? ConnectionAlert else { return }
         
-        // Show analysis window
         Task {
             // Enrich the alert with WHOIS/geo data
             await EnrichmentService.shared.enrichAlert(&alert)
@@ -80,7 +118,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     ))
                 }
             } else {
-                // No API key, show basic info
                 await showAnalysisWindow(AIAnalysis(
                     alert: alert,
                     recommendation: .unknown,
@@ -96,7 +133,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Close existing window if any
         analysisWindow?.close()
         
-        // Create new window
         let contentView = AnalysisView(analysis: analysis)
         
         analysisWindow = NSWindow(
@@ -112,23 +148,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         analysisWindow?.level = .floating
         analysisWindow?.makeKeyAndOrderFront(nil)
         
-        // Bring app to front
         NSApp.activate(ignoringOtherApps: true)
-    }
-    
-    // MARK: - Menu
-    
-    private func createMenu() -> NSMenu {
-        let menu = NSMenu()
-        
-        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        
-        return menu
-    }
-    
-    @objc private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 }

@@ -4,24 +4,46 @@ struct SettingsView: View {
     @ObservedObject private var claudeClient = ClaudeAPIClient.shared
     @ObservedObject private var monitor = AccessibilityMonitor.shared
     
-    @State private var apiKey: String = ""
+    @State private var newApiKey: String = ""
     @State private var showKey = false
     @State private var saveStatus: String?
+    @State private var expandedKeys = false
     
     var body: some View {
         Form {
+            // API Keys Section
             Section {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Claude API Key")
-                        .font(.headline)
+                    HStack {
+                        Text("Claude API Keys")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Text("\(claudeClient.apiKeysConfigured) configured")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     
+                    // Show configured keys count and failover status
+                    if claudeClient.apiKeysConfigured > 1 {
+                        HStack {
+                            Image(systemName: "checkmark.shield.fill")
+                                .foregroundColor(.green)
+                            Text("Failover enabled - \(claudeClient.apiKeysConfigured) backup keys")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Add new key
                     HStack {
                         if showKey {
-                            TextField("sk-ant-api...", text: $apiKey)
+                            TextField("sk-ant-api...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(.body, design: .monospaced))
                         } else {
-                            SecureField("sk-ant-api...", text: $apiKey)
+                            SecureField("sk-ant-api...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
                         
@@ -32,18 +54,14 @@ struct SettingsView: View {
                     }
                     
                     HStack {
-                        Button("Save Key") {
-                            claudeClient.apiKey = apiKey
-                            saveStatus = "✓ Saved"
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                saveStatus = nil
-                            }
+                        Button("Add Key") {
+                            addKey()
                         }
-                        .disabled(apiKey.isEmpty)
+                        .disabled(newApiKey.isEmpty)
                         
                         if let status = saveStatus {
                             Text(status)
-                                .foregroundColor(.green)
+                                .foregroundColor(status.contains("✓") ? .green : .red)
                                 .font(.caption)
                         }
                         
@@ -52,11 +70,26 @@ struct SettingsView: View {
                         Link("Get API Key", destination: URL(string: "https://console.anthropic.com/")!)
                             .font(.caption)
                     }
+                    
+                    // Key sources info
+                    DisclosureGroup("Key sources", isExpanded: $expandedKeys) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            KeySourceRow(source: "Environment", key: "ANTHROPIC_API_KEY", 
+                                        found: ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil)
+                            KeySourceRow(source: "OpenClaw", key: "~/.openclaw/", 
+                                        found: claudeClient.apiKeysConfigured > 0)
+                            KeySourceRow(source: "App Keychain", key: "com.lulu-ai-companion", 
+                                        found: KeychainHelper.get(key: "claude_api_key") != nil)
+                        }
+                        .font(.caption)
+                        .padding(.top, 4)
+                    }
                 }
             } header: {
                 Text("API Configuration")
             }
             
+            // Permissions Section
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -108,6 +141,7 @@ struct SettingsView: View {
                 Text("Permissions")
             }
             
+            // About Section
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("How it works:")
@@ -124,6 +158,12 @@ struct SettingsView: View {
                     """)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    
+                    Divider()
+                    
+                    Text("Multiple API keys will be tried in sequence if one fails (rate limit or error). This provides automatic failover.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             } header: {
                 Text("About")
@@ -131,9 +171,42 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 450, height: 400)
-        .onAppear {
-            apiKey = claudeClient.apiKey ?? ""
+        .frame(width: 450, height: 450)
+    }
+    
+    private func addKey() {
+        guard !newApiKey.isEmpty else { return }
+        
+        if !newApiKey.hasPrefix("sk-ant-") {
+            saveStatus = "❌ Invalid format (should start with sk-ant-)"
+            return
+        }
+        
+        let slot = claudeClient.nextAvailableSlot()
+        claudeClient.addAPIKey(newApiKey, slot: slot)
+        newApiKey = ""
+        saveStatus = "✓ Key added"
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            saveStatus = nil
+        }
+    }
+}
+
+struct KeySourceRow: View {
+    let source: String
+    let key: String
+    let found: Bool
+    
+    var body: some View {
+        HStack {
+            Image(systemName: found ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(found ? .green : .gray)
+            Text(source)
+                .frame(width: 80, alignment: .leading)
+            Text(key)
+                .foregroundColor(.secondary)
+            Spacer()
         }
     }
 }

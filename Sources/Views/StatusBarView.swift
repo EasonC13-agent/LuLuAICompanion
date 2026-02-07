@@ -5,6 +5,8 @@ struct StatusBarView: View {
     @ObservedObject private var claudeClient = ClaudeAPIClient.shared
     @State private var showingSettings = false
     
+    var onShowWelcome: (() -> Void)?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -45,11 +47,18 @@ struct StatusBarView: View {
                 )
                 
                 StatusRow(
-                    title: "Claude API",
-                    status: claudeClient.hasAPIKey ? "Configured" : "Not Set",
+                    title: "API Keys",
+                    status: claudeClient.apiKeysConfigured > 0 ? "\(claudeClient.apiKeysConfigured) configured" : "Not Set",
                     isOK: claudeClient.hasAPIKey,
                     action: { showingSettings = true }
                 )
+                
+                if claudeClient.apiKeysConfigured > 1 {
+                    Text("  ↳ Failover enabled")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 16)
+                }
             }
             
             Divider()
@@ -86,6 +95,11 @@ struct StatusBarView: View {
                     showingSettings = true
                 }
                 
+                Button("Setup") {
+                    onShowWelcome?()
+                }
+                .buttonStyle(.borderless)
+                
                 Spacer()
                 
                 Button("Quit") {
@@ -97,7 +111,7 @@ struct StatusBarView: View {
         .frame(width: 300)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
-                .frame(width: 400, height: 300)
+                .frame(width: 450, height: 450)
         }
     }
 }

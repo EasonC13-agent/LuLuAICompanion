@@ -1,50 +1,171 @@
 import Foundation
 
-/// Client for Claude API to analyze connection alerts
+/// Client for Claude API with multi-key failover support
 class ClaudeAPIClient: ObservableObject {
     @Published var isAnalyzing = false
     @Published var lastError: String?
+    @Published var apiKeysConfigured: Int = 0
     
     private let baseURL = "https://api.anthropic.com/v1/messages"
     private let model = "claude-sonnet-4-20250514"
     
     static let shared = ClaudeAPIClient()
     
-    private init() {}
+    private init() {
+        refreshKeyCount()
+    }
     
-    // MARK: - API Key Management
+    // MARK: - Multi-Key Management
     
-    var apiKey: String? {
-        get { KeychainHelper.get(key: "claude_api_key") }
-        set {
-            if let value = newValue {
-                KeychainHelper.save(key: "claude_api_key", value: value)
-            } else {
-                KeychainHelper.delete(key: "claude_api_key")
+    /// All configured API keys (from various sources)
+    var apiKeys: [String] {
+        var keys: [String] = []
+        
+        // 1. Environment variable
+        if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
+            keys.append(envKey)
+        }
+        
+        // 2. OpenClaw keychain entries (try common patterns)
+        let openclawServices = [
+            "com.openclaw.anthropic",
+            "openclaw-anthropic",
+            "ai.openclaw"
+        ]
+        for service in openclawServices {
+            if let key = KeychainHelper.get(service: service, key: "api-key"), !key.isEmpty {
+                if !keys.contains(key) { keys.append(key) }
             }
         }
+        
+        // 3. Read from OpenClaw config file
+        keys.append(contentsOf: readOpenClawKeys())
+        
+        // 4. Our own keychain entries
+        if let key = KeychainHelper.get(key: "claude_api_key"), !key.isEmpty {
+            if !keys.contains(key) { keys.append(key) }
+        }
+        
+        // 5. Additional backup keys (users can add multiple)
+        for i in 1...5 {
+            if let key = KeychainHelper.get(key: "claude_api_key_\(i)"), !key.isEmpty {
+                if !keys.contains(key) { keys.append(key) }
+            }
+        }
+        
+        return keys
+    }
+    
+    /// Read API keys from OpenClaw's config file
+    private func readOpenClawKeys() -> [String] {
+        var keys: [String] = []
+        let configPath = NSHomeDirectory() + "/.openclaw/openclaw.json"
+        
+        guard let data = FileManager.default.contents(atPath: configPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let auth = json["auth"] as? [String: Any],
+              let profiles = auth["profiles"] as? [String: Any] else {
+            return keys
+        }
+        
+        // Look for anthropic profiles
+        for (key, value) in profiles {
+            if key.contains("anthropic"), let profile = value as? [String: Any] {
+                // Check for apiKey field
+                if let apiKey = profile["apiKey"] as? String, !apiKey.isEmpty {
+                    if !keys.contains(apiKey) { keys.append(apiKey) }
+                }
+                // Check for key field
+                if let apiKey = profile["key"] as? String, !apiKey.isEmpty {
+                    if !keys.contains(apiKey) { keys.append(apiKey) }
+                }
+            }
+        }
+        
+        return keys
     }
     
     var hasAPIKey: Bool {
-        guard let key = apiKey else { return false }
-        return !key.isEmpty
+        !apiKeys.isEmpty
     }
     
-    // MARK: - Analysis
+    func refreshKeyCount() {
+        apiKeysConfigured = apiKeys.count
+    }
+    
+    // MARK: - Key Management
+    
+    /// Add a new API key
+    func addAPIKey(_ key: String, slot: Int = 0) {
+        let keyName = slot == 0 ? "claude_api_key" : "claude_api_key_\(slot)"
+        KeychainHelper.save(key: keyName, value: key)
+        refreshKeyCount()
+    }
+    
+    /// Remove an API key
+    func removeAPIKey(slot: Int = 0) {
+        let keyName = slot == 0 ? "claude_api_key" : "claude_api_key_\(slot)"
+        KeychainHelper.delete(key: keyName)
+        refreshKeyCount()
+    }
+    
+    /// Get next available slot for a new key
+    func nextAvailableSlot() -> Int {
+        if KeychainHelper.get(key: "claude_api_key") == nil { return 0 }
+        for i in 1...5 {
+            if KeychainHelper.get(key: "claude_api_key_\(i)") == nil { return i }
+        }
+        return 0 // Overwrite primary if all full
+    }
+    
+    // MARK: - Analysis with Failover
     
     func analyzeConnection(_ alert: ConnectionAlert) async throws -> AIAnalysis {
-        guard let apiKey = apiKey, !apiKey.isEmpty else {
+        let keys = apiKeys
+        guard !keys.isEmpty else {
             throw APIError.noAPIKey
         }
         
         await MainActor.run { isAnalyzing = true }
         defer { Task { @MainActor in isAnalyzing = false } }
         
-        let prompt = buildPrompt(for: alert)
-        let response = try await sendRequest(prompt: prompt)
-        let analysis = parseResponse(response, for: alert)
+        var lastError: Error?
         
-        return analysis
+        // Try each key until one works
+        for (index, key) in keys.enumerated() {
+            do {
+                let prompt = buildPrompt(for: alert)
+                let response = try await sendRequest(prompt: prompt, apiKey: key)
+                let analysis = parseResponse(response, for: alert)
+                
+                // Success! If this wasn't the first key, log it
+                if index > 0 {
+                    print("API key \(index + 1) succeeded after \(index) failures")
+                }
+                
+                return analysis
+            } catch let error as APIError {
+                lastError = error
+                
+                // Only retry on rate limit or server errors
+                switch error {
+                case .httpError(let code, _) where code == 429 || code >= 500:
+                    print("Key \(index + 1) failed with \(code), trying next...")
+                    continue
+                case .httpError(let code, _) where code == 401:
+                    print("Key \(index + 1) is invalid (401), trying next...")
+                    continue
+                default:
+                    throw error // Don't retry on other errors
+                }
+            } catch {
+                lastError = error
+                print("Key \(index + 1) failed: \(error), trying next...")
+            }
+        }
+        
+        // All keys failed
+        throw lastError ?? APIError.noAPIKey
     }
     
     // MARK: - Prompt Building
@@ -87,12 +208,13 @@ class ClaudeAPIClient: ObservableObject {
     
     // MARK: - API Request
     
-    private func sendRequest(prompt: String) async throws -> String {
+    private func sendRequest(prompt: String, apiKey: String) async throws -> String {
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey!, forHTTPHeaderField: "x-api-key")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = 30
         
         let body: [String: Any] = [
             "model": model,
@@ -129,10 +251,9 @@ class ClaudeAPIClient: ObservableObject {
     // MARK: - Response Parsing
     
     private func parseResponse(_ response: String, for alert: ConnectionAlert) -> AIAnalysis {
-        // Try to extract JSON from response
         var analysis = AIAnalysis(alert: alert)
         
-        // Find JSON in response (Claude might include explanation text around it)
+        // Find JSON in response
         if let jsonStart = response.firstIndex(of: "{"),
            let jsonEnd = response.lastIndex(of: "}") {
             let jsonString = String(response[jsonStart...jsonEnd])
@@ -140,7 +261,6 @@ class ClaudeAPIClient: ObservableObject {
             if let data = jsonString.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 
-                // Parse recommendation
                 if let rec = json["recommendation"] as? String {
                     switch rec.uppercased() {
                     case "ALLOW": analysis.recommendation = .allow
@@ -150,7 +270,6 @@ class ClaudeAPIClient: ObservableObject {
                     }
                 }
                 
-                // Parse other fields
                 analysis.confidence = json["confidence"] as? Double ?? 0.5
                 analysis.summary = json["summary"] as? String ?? ""
                 analysis.details = json["details"] as? String ?? ""
@@ -159,7 +278,6 @@ class ClaudeAPIClient: ObservableObject {
             }
         }
         
-        // Fallback: if JSON parsing failed, use the raw response
         if analysis.summary.isEmpty {
             analysis.summary = "See details"
             analysis.details = response
@@ -179,7 +297,7 @@ class ClaudeAPIClient: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .noAPIKey:
-                return "No API key configured. Please add your Claude API key in settings."
+                return "No API key configured. Please add your Claude API key."
             case .invalidResponse:
                 return "Invalid response from server"
             case .httpError(let code, let message):
