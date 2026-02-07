@@ -17,61 +17,24 @@ class ClaudeAPIClient: ObservableObject {
     
     // MARK: - Multi-Key Management
     
-    /// All configured API keys (from various sources)
-    /// Note: We only read from sources that don't require user confirmation prompts
+    /// All configured API keys (environment + app keychain only)
     var apiKeys: [String] {
         var keys: [String] = []
         
-        // 1. Environment variable (no prompt)
+        // 1. Environment variable
         if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
             keys.append(envKey)
         }
         
-        // 2. Read from OpenClaw config file (no prompt - just file access)
-        // This reads ~/.openclaw/openclaw.json, not Keychain
-        keys.append(contentsOf: readOpenClawKeys())
-        
-        // 3. Our own app's keychain entries (no prompt - same app)
+        // 2. Our own app's keychain entries
         if let key = KeychainHelper.get(key: "claude_api_key"), !key.isEmpty {
             if !keys.contains(key) { keys.append(key) }
         }
         
-        // 4. Additional backup keys (users can add multiple)
+        // 3. Additional backup keys (users can add multiple)
         for i in 1...5 {
             if let key = KeychainHelper.get(key: "claude_api_key_\(i)"), !key.isEmpty {
                 if !keys.contains(key) { keys.append(key) }
-            }
-        }
-        
-        // Note: We intentionally don't read from other apps' Keychain
-        // because that would trigger a macOS permission prompt
-        
-        return keys
-    }
-    
-    /// Read API keys from OpenClaw's config file
-    private func readOpenClawKeys() -> [String] {
-        var keys: [String] = []
-        let configPath = NSHomeDirectory() + "/.openclaw/openclaw.json"
-        
-        guard let data = FileManager.default.contents(atPath: configPath),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let auth = json["auth"] as? [String: Any],
-              let profiles = auth["profiles"] as? [String: Any] else {
-            return keys
-        }
-        
-        // Look for anthropic profiles
-        for (key, value) in profiles {
-            if key.contains("anthropic"), let profile = value as? [String: Any] {
-                // Check for apiKey field
-                if let apiKey = profile["apiKey"] as? String, !apiKey.isEmpty {
-                    if !keys.contains(apiKey) { keys.append(apiKey) }
-                }
-                // Check for key field
-                if let apiKey = profile["key"] as? String, !apiKey.isEmpty {
-                    if !keys.contains(apiKey) { keys.append(apiKey) }
-                }
             }
         }
         
@@ -86,7 +49,7 @@ class ClaudeAPIClient: ObservableObject {
         apiKeysConfigured = apiKeys.count
     }
     
-    // MARK: - Key Management
+    // MARK: - Key Management (for CLI and UI)
     
     /// Add a new API key
     func addAPIKey(_ key: String, slot: Int = 0) {
@@ -109,6 +72,25 @@ class ClaudeAPIClient: ObservableObject {
             if KeychainHelper.get(key: "claude_api_key_\(i)") == nil { return i }
         }
         return 0 // Overwrite primary if all full
+    }
+    
+    /// List all key slots and their status (for CLI)
+    func listKeys() -> [(slot: Int, hasKey: Bool, prefix: String?)] {
+        var result: [(slot: Int, hasKey: Bool, prefix: String?)] = []
+        
+        if let key = KeychainHelper.get(key: "claude_api_key") {
+            result.append((0, true, String(key.prefix(12)) + "..."))
+        } else {
+            result.append((0, false, nil))
+        }
+        
+        for i in 1...5 {
+            if let key = KeychainHelper.get(key: "claude_api_key_\(i)") {
+                result.append((i, true, String(key.prefix(12)) + "..."))
+            }
+        }
+        
+        return result
     }
     
     // MARK: - Analysis with Failover

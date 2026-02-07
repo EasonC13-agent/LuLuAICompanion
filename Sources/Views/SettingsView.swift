@@ -72,19 +72,19 @@ struct SettingsView: View {
                     }
                     
                     // Key sources info
-                    DisclosureGroup("Key sources (no prompts)", isExpanded: $expandedKeys) {
+                    DisclosureGroup("Key sources", isExpanded: $expandedKeys) {
                         VStack(alignment: .leading, spacing: 4) {
                             KeySourceRow(source: "Environment", key: "ANTHROPIC_API_KEY", 
                                         found: ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil)
-                            KeySourceRow(source: "OpenClaw Config", key: "~/.openclaw/openclaw.json", 
-                                        found: FileManager.default.fileExists(atPath: NSHomeDirectory() + "/.openclaw/openclaw.json"))
                             KeySourceRow(source: "App Keychain", key: "com.lulu-ai-companion", 
                                         found: KeychainHelper.hasOwnAPIKeys())
                             
-                            Text("Only reads from sources that don't require user prompts.")
+                            Divider()
+                                .padding(.vertical, 4)
+                            
+                            Text("CLI: LuLuAICompanion --add-key <key>")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                                .padding(.top, 4)
                         }
                         .font(.caption)
                         .padding(.top, 4)

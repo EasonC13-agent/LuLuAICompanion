@@ -204,7 +204,7 @@ struct WelcomeView: View {
                 Text("• Your key is stored securely in macOS Keychain")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("• You can manage keys later manually or via OpenClaw")
+                Text("• You can manage keys later in Settings or via CLI")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
