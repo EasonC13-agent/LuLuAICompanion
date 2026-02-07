@@ -26,48 +26,8 @@ jobs:
       - name: Generate Project
         run: xcodegen generate
       
-      - name: Import Code Signing Certificate
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.SIGNING_CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          # Debug: show lengths (not content) of secrets
-          echo "Certificate base64 length: ${#CERTIFICATE_BASE64}"
-          echo "Password length: ${#CERTIFICATE_PASSWORD}"
-          echo "First 20 chars of base64: ${CERTIFICATE_BASE64:0:20}"
-          
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-          
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          
-          # Import certificate - use printf to avoid echo adding newline issues
-          CERT_PATH=$RUNNER_TEMP/certificate.p12
-          printf "%s" "$CERTIFICATE_BASE64" | base64 -D > "$CERT_PATH"
-          
-          echo "Decoded cert file size: $(wc -c < "$CERT_PATH")"
-          
-          # Verify the p12 can be read with openssl first
-          openssl pkcs12 -info -in "$CERT_PATH" -passin pass:"$CERTIFICATE_PASSWORD" -noout 2>&1 || echo "OpenSSL verify failed"
-          
-          # Debug: try converting p12 with openssl to re-export with known format
-          openssl pkcs12 -in "$CERT_PATH" -passin pass:"$CERTIFICATE_PASSWORD" -nodes -out /tmp/cert.pem 2>&1
-          openssl pkcs12 -export -in /tmp/cert.pem -out /tmp/cert-new.p12 -passout pass:temp123 2>&1
-          
-          echo "Re-exported cert size: $(wc -c < /tmp/cert-new.p12)"
-          
-          # Try importing the re-exported cert
-          security import /tmp/cert-new.p12 -P "temp123" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
-          
-          # Allow codesign to access keychain
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          
-          # Find and display certificate identity
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+      # Note: Using ad-hoc signing (-) for CI builds since we don't have Apple Developer cert
+      # Users can re-sign with their own identity if needed
       
       - name: Build
         run: |
@@ -76,14 +36,16 @@ jobs:
             -configuration Release \
             -archivePath build/LuLuAICompanion.xcarchive \
             archive \
-            CODE_SIGN_IDENTITY="LuLuAICompanion Developer" \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGNING_ALLOWED=YES \
-            OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/build.keychain"
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES
       
-      - name: Verify Signature
+      - name: Sign App (ad-hoc)
         run: |
-          codesign -dv --verbose=4 build/LuLuAICompanion.xcarchive/Products/Applications/LuLuAICompanion.app
+          # Ad-hoc sign the app
+          codesign --force --deep --sign - build/LuLuAICompanion.xcarchive/Products/Applications/LuLuAICompanion.app
+          # Verify
+          codesign -dv --verbose=2 build/LuLuAICompanion.xcarchive/Products/Applications/LuLuAICompanion.app
       
       - name: Create DMG
         run: |
