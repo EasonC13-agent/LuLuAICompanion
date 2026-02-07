@@ -198,6 +198,10 @@ class ClaudeAPIClient: ObservableObject {
     private func sendRequest(prompt: String, apiKey: String) async throws -> String {
         let isOAuth = apiKey.hasPrefix("sk-ant-oat")
         
+        // Debug: Log key info (first 20 chars only for security)
+        let keyPrefix = String(apiKey.prefix(20))
+        print("[DEBUG] API Key prefix: \(keyPrefix)... (length: \(apiKey.count), isOAuth: \(isOAuth))")
+        
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -210,11 +214,12 @@ class ClaudeAPIClient: ObservableObject {
             request.setValue("claude-cli/\(claudeCodeVersion) (external, cli)", forHTTPHeaderField: "User-Agent")
             request.setValue("cli", forHTTPHeaderField: "x-app")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            print("Using OAuth token with Claude Code stealth mode")
+            print("[DEBUG] Using OAuth token with Claude Code stealth mode")
+            print("[DEBUG] Headers set: Authorization=Bearer..., anthropic-beta=claude-code-20250219,oauth-2025-04-20")
         } else {
             // Regular API key - use x-api-key header
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            print("Using API key auth")
+            print("[DEBUG] Using API key auth")
         }
         
         request.timeoutInterval = 30
@@ -240,8 +245,11 @@ class ClaudeAPIClient: ObservableObject {
             throw APIError.invalidResponse
         }
         
+        print("[DEBUG] Response status: \(httpResponse.statusCode)")
+        
         if httpResponse.statusCode != 200 {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("[DEBUG] Error response: \(errorBody)")
             throw APIError.httpError(statusCode: httpResponse.statusCode, message: errorBody)
         }
         
