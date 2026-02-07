@@ -17,6 +17,7 @@ targets:
     platform: macOS
     sources:
       - Sources
+      - Resources/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lulu-ai.companion
