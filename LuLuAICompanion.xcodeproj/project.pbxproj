@@ -1,0 +1,364 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1F285F215051A3A6BB11BB5F /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500BB17652AB3FD79E5A1774 /* StatusBarView.swift */; };
+		34A99363807C5F50E69F9E73 /* ClaudeAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C48C2C3BEE9F8235A7755B /* ClaudeAPIClient.swift */; };
+		3C4EB16CEC2C60C26168CDA6 /* AIAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F84F1C2DAFB06C16F9F7F85 /* AIAnalysis.swift */; };
+		3CE49BB4DE891BFDFD3C6C13 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981BEDAEAAED8B448FA8716E /* SettingsView.swift */; };
+		772670C59907CB2008F8B6F8 /* EnrichmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37AB4A5220A9D793648D1BB /* EnrichmentService.swift */; };
+		84B5667B845848143C8DBE7D /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20B9210262ECA384DF02E4A /* KeychainHelper.swift */; };
+		9D6997E9DE664842C690FE06 /* ConnectionAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F41B9136EA84FD2684C2513 /* ConnectionAlert.swift */; };
+		D28F7A75D4FEC81088797E23 /* LuLuAICompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */; };
+		D5197E57327BA2145A61344E /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */; };
+		DA91EDBA42A1DB0DC4094B73 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D89D92734236EF52F13505E /* AppDelegate.swift */; };
+		DE77D8C78AA8A188A770B6BA /* AccessibilityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADAC6B06A5B3D48BBF5CE096 /* AccessibilityMonitor.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		06CEA9B2906DC4AC9316B1FB /* LuLuAICompanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LuLuAICompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0F41B9136EA84FD2684C2513 /* ConnectionAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionAlert.swift; sourceTree = "<group>"; };
+		2D89D92734236EF52F13505E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2F84F1C2DAFB06C16F9F7F85 /* AIAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysis.swift; sourceTree = "<group>"; };
+		31C48C2C3BEE9F8235A7755B /* ClaudeAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIClient.swift; sourceTree = "<group>"; };
+		39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		500BB17652AB3FD79E5A1774 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		981BEDAEAAED8B448FA8716E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LuLuAICompanionApp.swift; sourceTree = "<group>"; };
+		ADAC6B06A5B3D48BBF5CE096 /* AccessibilityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityMonitor.swift; sourceTree = "<group>"; };
+		D20B9210262ECA384DF02E4A /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		F37AB4A5220A9D793648D1BB /* EnrichmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnrichmentService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		216917EC6E7F11CC68717FEA /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				D20B9210262ECA384DF02E4A /* KeychainHelper.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		30C9BE871C6E84F3CFC68293 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				2D89D92734236EF52F13505E /* AppDelegate.swift */,
+				A6A06E90EC6F3A5FA0A9A9F1 /* LuLuAICompanionApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		3F48E3284D69A9F29D351A1A /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				30C9BE871C6E84F3CFC68293 /* App */,
+				7477615AA42B89399F4F39E7 /* Models */,
+				90EB75BFB5C0DF0543C2675A /* Services */,
+				216917EC6E7F11CC68717FEA /* Utilities */,
+				6A9459DA840419B4F2805CBE /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		6A9459DA840419B4F2805CBE /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				39281BB888DA2D8BB7F5EDD1 /* AnalysisView.swift */,
+				981BEDAEAAED8B448FA8716E /* SettingsView.swift */,
+				500BB17652AB3FD79E5A1774 /* StatusBarView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		7477615AA42B89399F4F39E7 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				2F84F1C2DAFB06C16F9F7F85 /* AIAnalysis.swift */,
+				0F41B9136EA84FD2684C2513 /* ConnectionAlert.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		90EB75BFB5C0DF0543C2675A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				ADAC6B06A5B3D48BBF5CE096 /* AccessibilityMonitor.swift */,
+				31C48C2C3BEE9F8235A7755B /* ClaudeAPIClient.swift */,
+				F37AB4A5220A9D793648D1BB /* EnrichmentService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		C0EC738E8E7B5FB3CFDAAD42 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				06CEA9B2906DC4AC9316B1FB /* LuLuAICompanion.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D2B7963E913F986F410B6A98 = {
+			isa = PBXGroup;
+			children = (
+				3F48E3284D69A9F29D351A1A /* Sources */,
+				C0EC738E8E7B5FB3CFDAAD42 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A7F62F68A915B1E9B7E262A /* LuLuAICompanion */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B65EBA3332CD9A773AC6FF66 /* Build configuration list for PBXNativeTarget "LuLuAICompanion" */;
+			buildPhases = (
+				39111565BBF284A7E2935324 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LuLuAICompanion;
+			packageProductDependencies = (
+			);
+			productName = LuLuAICompanion;
+			productReference = 06CEA9B2906DC4AC9316B1FB /* LuLuAICompanion.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D1BA8FB48949FA140827F000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = 2A7161164B93D32A643FFD92 /* Build configuration list for PBXProject "LuLuAICompanion" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D2B7963E913F986F410B6A98;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0A7F62F68A915B1E9B7E262A /* LuLuAICompanion */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		39111565BBF284A7E2935324 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3C4EB16CEC2C60C26168CDA6 /* AIAnalysis.swift in Sources */,
+				DE77D8C78AA8A188A770B6BA /* AccessibilityMonitor.swift in Sources */,
+				D5197E57327BA2145A61344E /* AnalysisView.swift in Sources */,
+				DA91EDBA42A1DB0DC4094B73 /* AppDelegate.swift in Sources */,
+				34A99363807C5F50E69F9E73 /* ClaudeAPIClient.swift in Sources */,
+				9D6997E9DE664842C690FE06 /* ConnectionAlert.swift in Sources */,
+				772670C59907CB2008F8B6F8 /* EnrichmentService.swift in Sources */,
+				84B5667B845848143C8DBE7D /* KeychainHelper.swift in Sources */,
+				D28F7A75D4FEC81088797E23 /* LuLuAICompanionApp.swift in Sources */,
+				3CE49BB4DE891BFDFD3C6C13 /* SettingsView.swift in Sources */,
+				1F285F215051A3A6BB11BB5F /* StatusBarView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		03936320A8C701487B20825B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		0FE72E61B4E497007184B2F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/LuLuAICompanion.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lulu-ai.companion";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		9E86F1B667B0F53EF32DCA7E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		D4919877954F1BA891F016F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/LuLuAICompanion.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.lulu-ai.companion";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2A7161164B93D32A643FFD92 /* Build configuration list for PBXProject "LuLuAICompanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9E86F1B667B0F53EF32DCA7E /* Debug */,
+				03936320A8C701487B20825B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B65EBA3332CD9A773AC6FF66 /* Build configuration list for PBXNativeTarget "LuLuAICompanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0FE72E61B4E497007184B2F3 /* Debug */,
+				D4919877954F1BA891F016F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D1BA8FB48949FA140827F000 /* Project object */;
+}
