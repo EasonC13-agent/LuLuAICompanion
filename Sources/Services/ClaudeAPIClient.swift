@@ -116,7 +116,9 @@ class ClaudeAPIClient: ObservableObject {
         var lastError: Error?
         
         // Try each key until one works
+        print("\n>>> Starting analysis with \(keys.count) key(s)")
         for (index, key) in keys.enumerated() {
+            print("\n>>> Trying key \(index + 1)/\(keys.count): \(String(key.prefix(20)))...")
             do {
                 let prompt = buildPrompt(for: alert)
                 let response = try await sendRequest(prompt: prompt, apiKey: key)
@@ -198,9 +200,14 @@ class ClaudeAPIClient: ObservableObject {
     private func sendRequest(prompt: String, apiKey: String) async throws -> String {
         let isOAuth = apiKey.hasPrefix("sk-ant-oat")
         
-        // Debug: Log key info (first 20 chars only for security)
-        let keyPrefix = String(apiKey.prefix(20))
-        print("[DEBUG] API Key prefix: \(keyPrefix)... (length: \(apiKey.count), isOAuth: \(isOAuth))")
+        // Debug: Log key info
+        let keyPrefix = String(apiKey.prefix(25))
+        let keyHasOatPrefix = apiKey.contains("sk-ant-oat")
+        print("=== API Request Debug ===")
+        print("Key prefix (25 chars): \(keyPrefix)")
+        print("Key length: \(apiKey.count)")
+        print("hasPrefix('sk-ant-oat'): \(isOAuth)")
+        print("contains('sk-ant-oat'): \(keyHasOatPrefix)")
         
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
@@ -214,13 +221,14 @@ class ClaudeAPIClient: ObservableObject {
             request.setValue("claude-cli/\(claudeCodeVersion) (external, cli)", forHTTPHeaderField: "User-Agent")
             request.setValue("cli", forHTTPHeaderField: "x-app")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            print("[DEBUG] Using OAuth token with Claude Code stealth mode")
-            print("[DEBUG] Headers set: Authorization=Bearer..., anthropic-beta=claude-code-20250219,oauth-2025-04-20")
+            print("AUTH MODE: OAuth (Bearer token)")
+            print("Headers: Authorization=Bearer..., anthropic-beta=claude-code-20250219,oauth-2025-04-20")
         } else {
             // Regular API key - use x-api-key header
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            print("[DEBUG] Using API key auth")
+            print("AUTH MODE: API Key (x-api-key)")
         }
+        print("=========================")
         
         request.timeoutInterval = 30
         
