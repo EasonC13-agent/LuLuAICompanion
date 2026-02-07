@@ -158,37 +158,38 @@ class ClaudeAPIClient: ObservableObject {
     
     private func buildPrompt(for alert: ConnectionAlert) -> String {
         """
-        You are a macOS firewall security advisor. Analyze this outgoing network connection and provide a security recommendation.
+        You are a macOS firewall security advisor. Analyze this LuLu Firewall alert.
         
         \(alert.promptDescription)
         
-        Based on this information:
-        1. Identify what service/application is likely making this connection
-        2. Assess the security risk (is this expected behavior?)
-        3. Recommend: ALLOW, BLOCK, or CAUTION
-        4. Explain your reasoning briefly
+        The raw UI elements above are extracted from a LuLu firewall alert popup. Parse them to identify:
+        - Process name, PID, path, and arguments (the process making the connection)
+        - Destination IP address, port, protocol
+        - Reverse DNS if available
         
-        Respond in this exact JSON format:
+        LuLu alert format typically has labels like "pid:", "args:", "path:", "ip address:", "port/protocol:", "(reverse) dns:" followed by their values.
+        
+        Based on ALL available information:
+        1. Identify what application/service is making this connection and why
+        2. Assess the security risk
+        3. Recommend: ALLOW, BLOCK, or CAUTION
+        
+        Respond in JSON:
         {
             "recommendation": "ALLOW" | "BLOCK" | "CAUTION",
             "confidence": 0.0-1.0,
-            "known_service": "Name of known service if identified, or null",
-            "summary": "One-line summary",
-            "details": "2-3 sentence explanation",
+            "known_service": "Name of service or null",
+            "summary": "One-line summary including process name and destination",
+            "details": "2-3 sentence explanation with context about the process and connection",
             "risks": ["risk1", "risk2"]
         }
         
-        Common safe connections:
+        Common safe patterns:
         - Apple services (*.apple.com, *.icloud.com)
-        - Google (*.google.com, *.googleapis.com, *.1e100.net)
-        - Microsoft (*.microsoft.com)
-        - CDNs (*.cloudflare.com, *.akamai.com, *.fastly.net)
-        
-        Be cautious about:
-        - Unknown IPs without reverse DNS
-        - Connections to unusual ports
-        - Processes connecting to unexpected destinations
-        - Newly installed or unsigned applications
+        - GitHub (*.github.com, github CDN IPs)
+        - Google (*.google.com, *.googleapis.com)
+        - CDNs (*.cloudflare.com, *.akamai.com, *.fastly.net, *.awsglobalaccelerator.com)
+        - Development tools (curl, git, npm, pip accessing known repos)
         """
     }
     

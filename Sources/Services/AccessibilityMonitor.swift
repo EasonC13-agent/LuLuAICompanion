@@ -91,17 +91,14 @@ class AccessibilityMonitor: ObservableObject {
     // MARK: - Data Extraction
     
     private func extractAlertData(from window: AXUIElement) {
-        var alert = ConnectionAlert()
-        
         // Get all UI elements recursively
         let elements = getAllElements(from: window)
         
-        // Parse the text elements to extract data - try multiple attributes
+        // Extract all text from the alert - try multiple attributes
         var texts: [String] = []
-        var seenTexts = Set<String>()  // Avoid duplicates
+        var seenTexts = Set<String>()
         
         for element in elements {
-            // Try to get text from various attributes
             let attributes = [
                 kAXValueAttribute,
                 kAXTitleAttribute,
@@ -119,68 +116,76 @@ class AccessibilityMonitor: ObservableObject {
             }
         }
         
-        // Parse extracted texts using pattern matching
-        // LuLu alert elements come in unpredictable order, so match by content pattern
-        
         print("DEBUG: Extracted \(texts.count) text elements from LuLu alert")
         for (i, t) in texts.enumerated() {
             print("  [\(i)] \(t)")
         }
         
+        // Basic parsing for display purposes - Claude will do the real analysis
+        var processName = ""
+        var processPath = ""
+        var processID = ""
+        var processArgs = ""
+        var ipAddress = ""
+        var port = ""
+        var proto = "TCP"
+        var reverseDNS = ""
+        
         for text in texts {
             let trimmed = text.trimmingCharacters(in: .whitespaces)
-            
-            // Skip labels (they end with ":")
             if trimmed.hasSuffix(":") { continue }
             
-            // PID: 5-6 digit number
-            if trimmed.matches(pattern: "^\\d{4,6}$") && alert.processID.isEmpty {
-                alert.processID = trimmed
+            // IP address
+            if trimmed.matches(pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$") && ipAddress.isEmpty {
+                ipAddress = trimmed
             }
-            // IP address: x.x.x.x pattern
-            else if trimmed.matches(pattern: "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$") && alert.ipAddress.isEmpty {
-                alert.ipAddress = trimmed
-            }
-            // Port/Protocol: "443 (TCP)" or "80 (UDP)" pattern
+            // Port/Protocol
             else if trimmed.matches(pattern: "^\\d{1,5} \\((TCP|UDP)\\)$") {
                 let parts = trimmed.components(separatedBy: " ")
-                if let port = parts.first {
-                    alert.port = port
-                }
-                alert.proto = trimmed.contains("TCP") ? "TCP" : "UDP"
+                port = parts.first ?? ""
+                proto = trimmed.contains("TCP") ? "TCP" : "UDP"
             }
-            // Path: starts with / and contains typical path components
-            else if trimmed.starts(with: "/") && (trimmed.contains("/bin/") || trimmed.contains("/Applications/") || trimmed.contains("/Library/") || trimmed.contains("/Users/") || trimmed.contains("/usr/") || trimmed.contains("/System/")) {
-                alert.processPath = trimmed
+            // PID
+            else if trimmed.matches(pattern: "^\\d{4,6}$") && processID.isEmpty {
+                processID = trimmed
+            }
+            // Path
+            else if trimmed.starts(with: "/") && trimmed.contains("/") {
+                processPath = trimmed
                 if let name = trimmed.components(separatedBy: "/").last, !name.isEmpty {
-                    alert.processName = name
+                    processName = name
                 }
             }
-            // URL args: starts with http:// or https://
+            // URL args
             else if trimmed.starts(with: "http://") || trimmed.starts(with: "https://") {
-                alert.processArgs = trimmed
+                processArgs = trimmed
             }
-            // Reverse DNS: hostname pattern (letters, dots, ends with TLD)
-            else if trimmed.matches(pattern: "^[a-zA-Z0-9.-]+\\.(com|net|org|io|co|dev|app|cloud|edu|gov|[a-z]{2})\\.*$") && alert.reverseDNS.isEmpty {
-                alert.reverseDNS = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-            }
-            // Process name: single word, could be "curl", "Safari", etc. (after we've tried other patterns)
-            else if !trimmed.isEmpty && !trimmed.contains(" ") && !trimmed.contains("/") && !trimmed.contains(":") && trimmed.count < 50 {
-                // Only set if we don't have a process name from path
-                if alert.processName.isEmpty && trimmed != "Details & Options" && trimmed != "Process" && trimmed != "Connection" && trimmed != "LuLu Alert" && !trimmed.starts(with: "Time stamp") {
-                    alert.processName = trimmed
-                }
+            // Reverse DNS
+            else if trimmed.matches(pattern: "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\.*$") && reverseDNS.isEmpty && !trimmed.starts(with: "/") {
+                reverseDNS = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "."))
             }
         }
         
-        print("DEBUG: Parsed alert - process:\(alert.processName), pid:\(alert.processID), path:\(alert.processPath), args:\(alert.processArgs), ip:\(alert.ipAddress), port:\(alert.port)")
+        // Create alert with RAW TEXTS for Claude to analyze directly
+        let alert = ConnectionAlert(
+            processName: processName,
+            processPath: processPath,
+            processID: processID,
+            processArgs: processArgs,
+            ipAddress: ipAddress,
+            port: port,
+            proto: proto,
+            reverseDNS: reverseDNS,
+            rawTexts: texts
+        )
         
-        // Also try to get window title for process name
-        var titleValue: CFTypeRef?
-        AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
+        print("DEBUG: Created alert with \(texts.count) raw texts")
+        print("DEBUG: Basic parse - ip:\(ipAddress), port:\(port), process:\(processName)")
         
-        // Only trigger if we have meaningful data and it's different from last alert
-        if !alert.ipAddress.isEmpty && alert.ipAddress != lastAlert?.ipAddress {
+        // Trigger if we have data (IP or enough raw texts)
+        let hasData = !ipAddress.isEmpty || texts.count > 5
+        let isDifferent = ipAddress != lastAlert?.ipAddress || texts != lastAlert?.rawTexts
+        if hasData && isDifferent {
             print("Detected LuLu Alert: \(alert.processName) -> \(alert.ipAddress):\(alert.port)")
             DispatchQueue.main.async {
                 self.lastAlert = alert
