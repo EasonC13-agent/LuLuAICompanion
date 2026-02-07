@@ -1,40 +1,95 @@
 import SwiftUI
 
+/// Observable model for live updates
+class AnalysisViewModel: ObservableObject {
+    @Published var alert: ConnectionAlert
+    @Published var recommendation: AIAnalysis.Recommendation = .unknown
+    @Published var confidence: Double = 0
+    @Published var summary: String = ""
+    @Published var details: String = ""
+    @Published var risks: [String] = []
+    @Published var knownService: String?
+    
+    @Published var isLoadingEnrichment: Bool = true
+    @Published var isLoadingAnalysis: Bool = true
+    @Published var errorMessage: String?
+    
+    init(alert: ConnectionAlert) {
+        self.alert = alert
+    }
+    
+    func updateEnrichment(_ enrichedAlert: ConnectionAlert) {
+        self.alert = enrichedAlert
+        self.isLoadingEnrichment = false
+    }
+    
+    func updateAnalysis(_ analysis: AIAnalysis) {
+        self.recommendation = analysis.recommendation
+        self.confidence = analysis.confidence
+        self.summary = analysis.summary
+        self.details = analysis.details
+        self.risks = analysis.risks
+        self.knownService = analysis.knownService
+        self.isLoadingAnalysis = false
+    }
+    
+    func setError(_ message: String) {
+        self.errorMessage = message
+        self.isLoadingAnalysis = false
+    }
+}
+
 struct AnalysisView: View {
-    let analysis: AIAnalysis
+    @ObservedObject var viewModel: AnalysisViewModel
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // Recommendation Header
                 HStack(spacing: 12) {
-                    Text(analysis.recommendation.emoji)
-                        .font(.system(size: 48))
+                    if viewModel.isLoadingAnalysis {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .frame(width: 48, height: 48)
+                    } else {
+                        Text(viewModel.recommendation.emoji)
+                            .font(.system(size: 48))
+                    }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(analysis.recommendation.rawValue)
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(recommendationColor)
-                        
-                        if let service = analysis.knownService {
-                            Text(service)
-                                .font(.subheadline)
+                        if viewModel.isLoadingAnalysis {
+                            Text("Analyzing...")
+                                .font(.title)
+                                .fontWeight(.bold)
                                 .foregroundColor(.secondary)
-                        }
-                        
-                        // Confidence bar
-                        HStack(spacing: 4) {
-                            Text("Confidence:")
+                            Text("Asking Claude for security assessment")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        } else {
+                            Text(viewModel.recommendation.rawValue)
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundColor(recommendationColor)
                             
-                            ProgressView(value: analysis.confidence)
-                                .frame(width: 80)
+                            if let service = viewModel.knownService {
+                                Text(service)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                             
-                            Text("\(Int(analysis.confidence * 100))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            // Confidence bar
+                            HStack(spacing: 4) {
+                                Text("Confidence:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                ProgressView(value: viewModel.confidence)
+                                    .frame(width: 80)
+                                
+                                Text("\(Int(viewModel.confidence * 100))%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     
@@ -44,13 +99,26 @@ struct AnalysisView: View {
                 .background(recommendationColor.opacity(0.1))
                 .cornerRadius(12)
                 
+                // Error message
+                if let error = viewModel.errorMessage {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .foregroundColor(.red)
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
                 // Summary
-                if !analysis.summary.isEmpty {
+                if !viewModel.summary.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Summary")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text(analysis.summary)
+                        Text(viewModel.summary)
                             .font(.body)
                     }
                 }
@@ -58,36 +126,47 @@ struct AnalysisView: View {
                 // Connection Details
                 GroupBox("Connection Details") {
                     VStack(alignment: .leading, spacing: 8) {
-                        DetailRow(label: "Process", value: analysis.alert.processName)
-                        DetailRow(label: "Path", value: analysis.alert.processPath)
-                        DetailRow(label: "Destination", value: "\(analysis.alert.ipAddress):\(analysis.alert.port)")
-                        DetailRow(label: "Protocol", value: analysis.alert.proto)
-                        if !analysis.alert.reverseDNS.isEmpty {
-                            DetailRow(label: "DNS", value: analysis.alert.reverseDNS)
-                        }
-                        if let geo = analysis.alert.geoLocation {
-                            DetailRow(label: "Location", value: geo)
-                        }
-                        if let whois = analysis.alert.whoisData {
-                            DetailRow(label: "WHOIS", value: whois)
+                        DetailRow(label: "Process", value: viewModel.alert.processName)
+                        DetailRow(label: "Path", value: viewModel.alert.processPath)
+                        DetailRow(label: "Destination", value: "\(viewModel.alert.ipAddress):\(viewModel.alert.port)")
+                        DetailRow(label: "Protocol", value: viewModel.alert.proto)
+                        
+                        if viewModel.isLoadingEnrichment {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Loading WHOIS/DNS...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        } else {
+                            if !viewModel.alert.reverseDNS.isEmpty {
+                                DetailRow(label: "DNS", value: viewModel.alert.reverseDNS)
+                            }
+                            if let geo = viewModel.alert.geoLocation {
+                                DetailRow(label: "Location", value: geo)
+                            }
+                            if let whois = viewModel.alert.whoisData {
+                                DetailRow(label: "WHOIS", value: whois)
+                            }
                         }
                     }
                 }
                 
                 // Details
-                if !analysis.details.isEmpty {
+                if !viewModel.details.isEmpty {
                     GroupBox("Analysis") {
-                        Text(analysis.details)
+                        Text(viewModel.details)
                             .font(.body)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 
                 // Risks
-                if !analysis.risks.isEmpty {
+                if !viewModel.risks.isEmpty {
                     GroupBox("Risks") {
                         VStack(alignment: .leading, spacing: 4) {
-                            ForEach(analysis.risks, id: \.self) { risk in
+                            ForEach(viewModel.risks, id: \.self) { risk in
                                 HStack(alignment: .top) {
                                     Text("•")
                                         .foregroundColor(.orange)
@@ -107,7 +186,8 @@ struct AnalysisView: View {
     }
     
     private var recommendationColor: Color {
-        switch analysis.recommendation {
+        if viewModel.isLoadingAnalysis { return .gray }
+        switch viewModel.recommendation {
         case .allow: return .green
         case .block: return .red
         case .caution: return .orange
@@ -134,24 +214,4 @@ struct DetailRow: View {
             Spacer()
         }
     }
-}
-
-#Preview {
-    AnalysisView(analysis: AIAnalysis(
-        alert: ConnectionAlert(
-            processName: "Python",
-            processPath: "/Library/Frameworks/Python.framework/Versions/3.11/Resources/Python.app",
-            processID: "73810",
-            ipAddress: "142.251.170.95",
-            port: "443",
-            proto: "TCP",
-            reverseDNS: "tc-in-f95.1e100.net"
-        ),
-        recommendation: .allow,
-        confidence: 0.92,
-        summary: "This is a Google Cloud service connection",
-        details: "Python is connecting to Google Cloud infrastructure (1e100.net is Google's internal domain). This is typical for applications using Google APIs, Cloud SDK, or Firebase.",
-        risks: [],
-        knownService: "Google Cloud Platform"
-    ))
 }

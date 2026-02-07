@@ -6,6 +6,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var analysisWindow: NSWindow?
     private var welcomeWindow: NSWindow?
+    private var currentViewModel: AnalysisViewModel?
     
     private let monitor = AccessibilityMonitor.shared
     private let claudeClient = ClaudeAPIClient.shared
@@ -99,44 +100,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleLuLuAlert(_ notification: Notification) {
         guard let alert = notification.userInfo?["alert"] as? ConnectionAlert else { return }
         
+        // Create view model and show window IMMEDIATELY
+        let viewModel = AnalysisViewModel(alert: alert)
+        self.currentViewModel = viewModel
+        
+        Task { @MainActor in
+            showAnalysisWindow(viewModel: viewModel)
+        }
+        
+        // Then do enrichment and analysis in background
         Task {
-            // Enrich the alert with WHOIS/geo data
+            // Step 1: Enrich with WHOIS/geo data
             let enrichedAlert = await EnrichmentService.shared.enrichAlert(alert)
+            await MainActor.run {
+                viewModel.updateEnrichment(enrichedAlert)
+            }
             
-            // Analyze with Claude
+            // Step 2: Analyze with Claude
             if claudeClient.hasAPIKey {
                 do {
                     let analysis = try await claudeClient.analyzeConnection(enrichedAlert)
-                    await showAnalysisWindow(analysis)
+                    await MainActor.run {
+                        viewModel.updateAnalysis(analysis)
+                    }
                 } catch {
                     print("Analysis error: \(error)")
-                    await showAnalysisWindow(AIAnalysis(
-                        alert: enrichedAlert,
-                        recommendation: .unknown,
-                        summary: "Analysis failed",
-                        details: error.localizedDescription
-                    ))
+                    await MainActor.run {
+                        viewModel.setError(error.localizedDescription)
+                    }
                 }
             } else {
-                await showAnalysisWindow(AIAnalysis(
-                    alert: enrichedAlert,
-                    recommendation: .unknown,
-                    summary: "No API key configured",
-                    details: "Add your Claude API key in settings to enable AI analysis."
-                ))
+                await MainActor.run {
+                    viewModel.setError("No API key configured. Add your Claude API key in settings.")
+                }
             }
         }
     }
     
     @MainActor
-    private func showAnalysisWindow(_ analysis: AIAnalysis) {
+    private func showAnalysisWindow(viewModel: AnalysisViewModel) {
         // Close existing window if any
         analysisWindow?.close()
         
-        let contentView = AnalysisView(analysis: analysis)
+        let contentView = AnalysisView(viewModel: viewModel)
         
         analysisWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 350),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
