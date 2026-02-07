@@ -7,7 +7,7 @@ struct SettingsView: View {
     @State private var newApiKey: String = ""
     @State private var showKey = false
     @State private var saveStatus: String?
-    @State private var expandedKeys = false
+    @State private var expandedKeys = true
     
     var body: some View {
         Form {
@@ -22,7 +22,7 @@ struct SettingsView: View {
                         
                         Text("\(claudeClient.apiKeysConfigured) configured")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(claudeClient.apiKeysConfigured > 0 ? .green : .red)
                     }
                     
                     // Show configured keys count and failover status
@@ -30,20 +30,78 @@ struct SettingsView: View {
                         HStack {
                             Image(systemName: "checkmark.shield.fill")
                                 .foregroundColor(.green)
-                            Text("Failover enabled - \(claudeClient.apiKeysConfigured) backup keys")
+                            Text("Failover enabled")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                     
+                    // List of configured keys
+                    DisclosureGroup("Manage Keys", isExpanded: $expandedKeys) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            // Environment key (read-only)
+                            if ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil {
+                                HStack {
+                                    Image(systemName: "terminal")
+                                        .foregroundColor(.blue)
+                                    Text("ENV: ANTHROPIC_API_KEY")
+                                        .font(.caption.monospaced())
+                                    Spacer()
+                                    Text("(read-only)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            
+                            // Keychain keys
+                            ForEach(claudeClient.listKeys(), id: \.slot) { keyInfo in
+                                if keyInfo.hasKey {
+                                    HStack {
+                                        Image(systemName: "key.fill")
+                                            .foregroundColor(.orange)
+                                        Text(keyInfo.prefix ?? "sk-ant-...")
+                                            .font(.caption.monospaced())
+                                        Spacer()
+                                        Text("Slot \(keyInfo.slot)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Button(action: {
+                                            claudeClient.removeAPIKey(slot: keyInfo.slot)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(.borderless)
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                            
+                            if claudeClient.apiKeysConfigured == 0 && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] == nil {
+                                Text("No API keys configured")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                    
+                    Divider()
+                    
                     // Add new key
+                    Text("Add New Key")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
                     HStack {
                         if showKey {
-                            TextField("sk-ant-api...", text: $newApiKey)
+                            TextField("sk-ant-api03-...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(.body, design: .monospaced))
+                                .font(.system(.caption, design: .monospaced))
                         } else {
-                            SecureField("sk-ant-api...", text: $newApiKey)
+                            SecureField("sk-ant-api03-...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
                         
@@ -71,24 +129,9 @@ struct SettingsView: View {
                             .font(.caption)
                     }
                     
-                    // Key sources info
-                    DisclosureGroup("Key sources", isExpanded: $expandedKeys) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            KeySourceRow(source: "Environment", key: "ANTHROPIC_API_KEY", 
-                                        found: ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil)
-                            KeySourceRow(source: "App Keychain", key: "com.lulu-ai-companion", 
-                                        found: KeychainHelper.hasOwnAPIKeys())
-                            
-                            Divider()
-                                .padding(.vertical, 4)
-                            
-                            Text("CLI: LuLuAICompanion --add-key <key>")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .font(.caption)
-                        .padding(.top, 4)
-                    }
+                    Text("Multiple keys provide automatic failover when one hits rate limits or fails.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
             } header: {
                 Text("API Configuration")
@@ -111,7 +154,7 @@ struct SettingsView: View {
                     }
                     
                     if !monitor.accessibilityEnabled {
-                        Text("This app needs Accessibility access to detect LuLu alert windows.")
+                        Text("Required to detect LuLu alert windows.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
@@ -125,18 +168,15 @@ struct SettingsView: View {
                             .fill(monitor.isMonitoring ? Color.green : Color.gray)
                             .frame(width: 10, height: 10)
                         
-                        Text("Monitoring Status")
+                        Text("Monitoring")
                         
                         Spacer()
                         
                         Toggle("", isOn: Binding(
                             get: { monitor.isMonitoring },
                             set: { enabled in
-                                if enabled {
-                                    monitor.startMonitoring()
-                                } else {
-                                    monitor.stopMonitoring()
-                                }
+                                if enabled { monitor.startMonitoring() }
+                                else { monitor.stopMonitoring() }
                             }
                         ))
                         .toggleStyle(.switch)
@@ -145,52 +185,24 @@ struct SettingsView: View {
             } header: {
                 Text("Permissions")
             }
-            
-            // About Section
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("How it works:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("""
-                    1. LuLu shows a firewall alert
-                    2. This app detects the alert window
-                    3. Extracts IP, process, and connection info
-                    4. Enriches with WHOIS/geo data
-                    5. Sends to Claude for analysis
-                    6. Shows AI recommendation
-                    """)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    
-                    Divider()
-                    
-                    Text("Multiple API keys will be tried in sequence if one fails (rate limit or error). This provides automatic failover.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            } header: {
-                Text("About")
-            }
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 450, height: 450)
+        .frame(width: 420, height: 480)
     }
     
     private func addKey() {
         guard !newApiKey.isEmpty else { return }
         
         if !newApiKey.hasPrefix("sk-ant-") {
-            saveStatus = "❌ Invalid format (should start with sk-ant-)"
+            saveStatus = "❌ Invalid format"
             return
         }
         
         let slot = claudeClient.nextAvailableSlot()
         claudeClient.addAPIKey(newApiKey, slot: slot)
         newApiKey = ""
-        saveStatus = "✓ Key added"
+        saveStatus = "✓ Added to slot \(slot)"
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             saveStatus = nil
@@ -214,8 +226,4 @@ struct KeySourceRow: View {
             Spacer()
         }
     }
-}
-
-#Preview {
-    SettingsView()
 }

@@ -6,10 +6,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var analysisWindow: NSWindow?
     private var welcomeWindow: NSWindow?
+    private var invalidKeyWindow: NSWindow?
     private var currentViewModel: AnalysisViewModel?
     
     private let monitor = AccessibilityMonitor.shared
     private let claudeClient = ClaudeAPIClient.shared
+    private var hasShownInvalidKeyAlert = false  // Prevent spam
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
@@ -125,6 +127,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         await MainActor.run { [weak viewModel] in
                             viewModel?.updateAnalysis(analysis)
                         }
+                    } catch let error as ClaudeAPIClient.APIError {
+                        print("Analysis error: \(error)")
+                        
+                        // Check if it's an authentication error (all keys invalid)
+                        if case .httpError(let code, _) = error, code == 401 {
+                            await MainActor.run { [weak self, weak viewModel] in
+                                viewModel?.setError("API key invalid. Please add a valid key.")
+                                self?.showInvalidKeyAlert()
+                            }
+                        } else {
+                            await MainActor.run { [weak viewModel] in
+                                viewModel?.setError(error.localizedDescription)
+                            }
+                        }
                     } catch {
                         print("Analysis error: \(error)")
                         await MainActor.run { [weak viewModel] in
@@ -132,13 +148,55 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         }
                     }
                 } else {
-                    await MainActor.run { [weak viewModel] in
-                        viewModel?.setError("No API key configured. Add your Claude API key in settings.")
+                    await MainActor.run { [weak self, weak viewModel] in
+                        viewModel?.setError("No API key configured.")
+                        self?.showInvalidKeyAlert()
                     }
                 }
             }
         }
     }
+    
+    // MARK: - Invalid Key Alert
+    
+    private func showInvalidKeyAlert() {
+        // Prevent showing multiple times
+        guard !hasShownInvalidKeyAlert else { return }
+        hasShownInvalidKeyAlert = true
+        
+        // Reset after 30 seconds to allow showing again
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+            self?.hasShownInvalidKeyAlert = false
+        }
+        
+        let alert = InvalidKeyView(onDismiss: { [weak self] in
+            self?.invalidKeyWindow?.close()
+            self?.invalidKeyWindow = nil
+        }, onAddKey: { [weak self] key in
+            let slot = self?.claudeClient.nextAvailableSlot() ?? 0
+            self?.claudeClient.addAPIKey(key, slot: slot)
+            self?.invalidKeyWindow?.close()
+            self?.invalidKeyWindow = nil
+        })
+        
+        invalidKeyWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 280),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        invalidKeyWindow?.title = "API Key Required"
+        invalidKeyWindow?.contentView = NSHostingView(rootView: alert)
+        invalidKeyWindow?.center()
+        invalidKeyWindow?.level = .floating
+        invalidKeyWindow?.isReleasedWhenClosed = false
+        invalidKeyWindow?.makeKeyAndOrderFront(nil)
+        
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    // MARK: - Analysis Window
     
     private func showAnalysisWindow(viewModel: AnalysisViewModel) {
         // Close existing window if any
