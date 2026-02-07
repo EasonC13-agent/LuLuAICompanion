@@ -187,17 +187,24 @@ struct WelcomeView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Tips:")
+                Text("Options:")
                     .font(.caption)
                     .fontWeight(.medium)
+                
+                Text("• Paste your API key above, or")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("• Run `claude setup-token` in Terminal to configure locally")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Divider()
+                    .padding(.vertical, 4)
                 
                 Text("• Your key is stored securely in macOS Keychain")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("• You can add multiple keys later for failover")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("• If you have OpenClaw, keys can be shared automatically")
+                Text("• You can manage keys later manually or via OpenClaw")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
