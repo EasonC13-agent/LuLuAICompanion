@@ -270,18 +270,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for window in windows {
             if let ownerName = window[kCGWindowOwnerName as String] as? String,
                ownerName.lowercased().contains("lulu") {
-                // Found a LuLu window - log details for debugging
-                let windowName = window[kCGWindowName as String] as? String ?? "(no name)"
                 let bounds = window[kCGWindowBounds as String] as? [String: Any]
                 let height = bounds?["Height"] as? CGFloat ?? 0
                 let width = bounds?["Width"] as? CGFloat ?? 0
-                print("[DEBUG] Found LuLu window: name='\(windowName)', size=\(width)x\(height)")
                 
-                // Any LuLu window counts as alert visible (simplified logic)
-                return true
+                // Only consider windows larger than 100x100 as alert windows
+                // (filters out menu bar icons which are ~30x24)
+                if width > 100 && height > 100 {
+                    print("[DEBUG] Found LuLu ALERT window: size=\(width)x\(height)")
+                    return true
+                }
             }
         }
         
+        print("[DEBUG] No LuLu alert window found (only menu bar)")
         return false
     }
 }
