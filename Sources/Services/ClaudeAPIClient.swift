@@ -243,9 +243,13 @@ class ClaudeAPIClient: ObservableObject {
             ]
         ]
         
-        // For OAuth tokens, MUST include Claude Code identity in system prompt
+        // For OAuth tokens, MUST include Claude Code identity as FIRST system block
+        // Additional instructions go in separate blocks (array format required)
         if isOAuth {
-            body["system"] = "You are Claude Code, Anthropic's official CLI for Claude. You are also a macOS firewall security advisor."
+            body["system"] = [
+                ["type": "text", "text": "You are Claude Code, Anthropic's official CLI for Claude."],
+                ["type": "text", "text": "You are also a macOS firewall security advisor. Analyze connections and respond in JSON."]
+            ]
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
