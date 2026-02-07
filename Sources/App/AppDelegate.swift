@@ -100,62 +100,70 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleLuLuAlert(_ notification: Notification) {
         guard let alert = notification.userInfo?["alert"] as? ConnectionAlert else { return }
         
-        // Create view model and show window IMMEDIATELY
-        let viewModel = AnalysisViewModel(alert: alert)
-        self.currentViewModel = viewModel
-        
-        Task { @MainActor in
-            showAnalysisWindow(viewModel: viewModel)
-        }
-        
-        // Then do enrichment and analysis in background
-        Task {
-            // Step 1: Enrich with WHOIS/geo data
-            let enrichedAlert = await EnrichmentService.shared.enrichAlert(alert)
-            await MainActor.run {
-                viewModel.updateEnrichment(enrichedAlert)
-            }
+        // Create view model and show window IMMEDIATELY on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             
-            // Step 2: Analyze with Claude
-            if claudeClient.hasAPIKey {
-                do {
-                    let analysis = try await claudeClient.analyzeConnection(enrichedAlert)
-                    await MainActor.run {
-                        viewModel.updateAnalysis(analysis)
-                    }
-                } catch {
-                    print("Analysis error: \(error)")
-                    await MainActor.run {
-                        viewModel.setError(error.localizedDescription)
-                    }
+            let viewModel = AnalysisViewModel(alert: alert)
+            self.currentViewModel = viewModel
+            self.showAnalysisWindow(viewModel: viewModel)
+            
+            // Then do enrichment and analysis in background
+            Task { [weak self, weak viewModel] in
+                guard let self = self, let viewModel = viewModel else { return }
+                
+                // Step 1: Enrich with WHOIS/geo data
+                let enrichedAlert = await EnrichmentService.shared.enrichAlert(alert)
+                await MainActor.run { [weak viewModel] in
+                    viewModel?.updateEnrichment(enrichedAlert)
                 }
-            } else {
-                await MainActor.run {
-                    viewModel.setError("No API key configured. Add your Claude API key in settings.")
+                
+                // Step 2: Analyze with Claude
+                if self.claudeClient.hasAPIKey {
+                    do {
+                        let analysis = try await self.claudeClient.analyzeConnection(enrichedAlert)
+                        await MainActor.run { [weak viewModel] in
+                            viewModel?.updateAnalysis(analysis)
+                        }
+                    } catch {
+                        print("Analysis error: \(error)")
+                        await MainActor.run { [weak viewModel] in
+                            viewModel?.setError(error.localizedDescription)
+                        }
+                    }
+                } else {
+                    await MainActor.run { [weak viewModel] in
+                        viewModel?.setError("No API key configured. Add your Claude API key in settings.")
+                    }
                 }
             }
         }
     }
     
-    @MainActor
     private func showAnalysisWindow(viewModel: AnalysisViewModel) {
         // Close existing window if any
-        analysisWindow?.close()
+        if let existingWindow = analysisWindow {
+            existingWindow.close()
+            analysisWindow = nil
+        }
         
         let contentView = AnalysisView(viewModel: viewModel)
         
-        analysisWindow = NSWindow(
+        let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 400),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         
-        analysisWindow?.title = "🤖 AI Analysis"
-        analysisWindow?.contentView = NSHostingView(rootView: contentView)
-        analysisWindow?.center()
-        analysisWindow?.level = .floating
-        analysisWindow?.makeKeyAndOrderFront(nil)
+        window.title = "🤖 AI Analysis"
+        window.contentView = NSHostingView(rootView: contentView)
+        window.center()
+        window.level = .floating
+        window.isReleasedWhenClosed = false  // Prevent crash on close
+        window.makeKeyAndOrderFront(nil)
+        
+        self.analysisWindow = window
         
         NSApp.activate(ignoringOtherApps: true)
     }
