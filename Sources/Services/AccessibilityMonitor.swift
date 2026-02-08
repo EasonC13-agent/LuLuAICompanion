@@ -183,8 +183,12 @@ class AccessibilityMonitor: ObservableObject {
         print("DEBUG: Basic parse - ip:\(ipAddress), port:\(port), process:\(processName)")
         
         // Trigger if we have data (IP or enough raw texts)
+        // Only compare key fields, NOT rawTexts (dropdown changes would cause refresh)
         let hasData = !ipAddress.isEmpty || texts.count > 5
-        let isDifferent = ipAddress != lastAlert?.ipAddress || texts != lastAlert?.rawTexts
+        let isDifferent = ipAddress != lastAlert?.ipAddress || 
+                          port != lastAlert?.port ||
+                          processName != lastAlert?.processName ||
+                          processID != lastAlert?.processID
         if hasData && isDifferent {
             print("Detected LuLu Alert: \(alert.processName) -> \(alert.ipAddress):\(alert.port)")
             DispatchQueue.main.async {
