@@ -6,8 +6,18 @@ class ClaudeAPIClient: ObservableObject {
     @Published var lastError: String?
     @Published var apiKeysConfigured: Int = 0
     
-    // LuLuAI Platform - Sui Tunnel powered API
-    private let baseURL = "https://platform.3mate.io/v1/messages"
+    // API endpoints
+    private let anthropicURL = "https://api.anthropic.com/v1/messages"
+    private let luluaiURL = "https://platform.3mate.io/v1/messages"
+    
+    /// Determine which endpoint to use based on API key prefix
+    private func getBaseURL(for apiKey: String) -> String {
+        if apiKey.hasPrefix("mateapikey") {
+            return luluaiURL  // LuLuAI Platform
+        } else {
+            return anthropicURL  // Original Anthropic API
+        }
+    }
     private let model = "claude-sonnet-4-20250514"
     
     static let shared = ClaudeAPIClient()
@@ -201,22 +211,27 @@ class ClaudeAPIClient: ObservableObject {
     
     private func sendRequest(prompt: String, apiKey: String) async throws -> String {
         let isOAuth = apiKey.hasPrefix("sk-ant-oat")
+        let isLuLuAI = apiKey.hasPrefix("mateapikey")
+        let baseURL = getBaseURL(for: apiKey)
         
         // Debug: Log key info
         let keyPrefix = String(apiKey.prefix(25))
-        let keyHasOatPrefix = apiKey.contains("sk-ant-oat")
         print("=== API Request Debug ===")
         print("Key prefix (25 chars): \(keyPrefix)")
         print("Key length: \(apiKey.count)")
-        print("hasPrefix('sk-ant-oat'): \(isOAuth)")
-        print("contains('sk-ant-oat'): \(keyHasOatPrefix)")
+        print("isOAuth: \(isOAuth), isLuLuAI: \(isLuLuAI)")
+        print("Using endpoint: \(baseURL)")
         
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         
-        if isOAuth {
+        if isLuLuAI {
+            // LuLuAI Platform - use x-api-key header
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            print("AUTH MODE: LuLuAI Platform (mateapikey)")
+        } else if isOAuth {
             // Stealth mode: Mimic Claude Code's headers exactly
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             request.setValue("claude-code-20250219,oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
@@ -225,9 +240,9 @@ class ClaudeAPIClient: ObservableObject {
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             print("AUTH MODE: OAuth (Bearer token)")
         } else {
-            // Regular API key - use x-api-key header
+            // Regular Anthropic API key - use x-api-key header
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            print("AUTH MODE: API Key (x-api-key)")
+            print("AUTH MODE: Anthropic API Key (x-api-key)")
         }
         
         // Debug: Print all headers
