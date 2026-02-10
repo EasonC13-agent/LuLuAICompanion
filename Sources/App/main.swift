@@ -10,13 +10,13 @@ if args.count > 1 {
     case "--add-key", "-a":
         if args.count > 2 {
             let key = args[2]
-            if key.hasPrefix("sk-ant-") {
+            if key.hasPrefix("sk-ant-") || key.hasPrefix("sk-3mate-apikey") {
                 let slot = ClaudeAPIClient.shared.nextAvailableSlot()
                 ClaudeAPIClient.shared.addAPIKey(key, slot: slot)
                 print("✓ API key added to slot \(slot)")
                 exit(0)
             } else {
-                print("✗ Invalid key format. Key should start with 'sk-ant-'")
+                print("✗ Invalid key format. Key should start with 'sk-ant-' or 'sk-3mate-apikey'")
                 exit(1)
             }
         } else {

@@ -295,11 +295,11 @@ struct APIKeyInputSection: View {
             // Key input
             HStack {
                 if showKey {
-                    TextField("sk-ant-api03-...", text: $newKey)
+                    TextField("sk-xxxxxxxx", text: $newKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.caption, design: .monospaced))
                 } else {
-                    SecureField("sk-ant-api03-...", text: $newKey)
+                    SecureField("sk-xxxxxxxx", text: $newKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
                 }
@@ -331,7 +331,7 @@ struct APIKeyInputSection: View {
                     ForEach(claudeClient.listKeys(), id: \.slot) { keyInfo in
                         if keyInfo.hasKey {
                             HStack {
-                                Text(keyInfo.prefix ?? "sk-ant-...")
+                                Text(keyInfo.prefix ?? "sk-...")
                                     .font(.caption2.monospaced())
                                 Spacer()
                                 Button(action: {
@@ -377,8 +377,8 @@ struct APIKeyInputSection: View {
         // Clean the key first
         let cleanedKey = newKey.components(separatedBy: .whitespacesAndNewlines).joined()
         
-        if !cleanedKey.hasPrefix("sk-ant-") {
-            statusMessage = "⚠️ Invalid format (should start with sk-ant-)"
+        if !cleanedKey.hasPrefix("sk-ant-") && !cleanedKey.hasPrefix("sk-3mate-apikey") {
+            statusMessage = "⚠️ Invalid format (should start with sk-ant- or sk-3mate-apikey)"
             return
         }
         

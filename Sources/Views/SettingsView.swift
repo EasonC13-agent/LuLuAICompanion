@@ -60,7 +60,7 @@ struct SettingsView: View {
                                     HStack {
                                         Image(systemName: "key.fill")
                                             .foregroundColor(.orange)
-                                        Text(keyInfo.prefix ?? "sk-ant-...")
+                                        Text(keyInfo.prefix ?? "sk-...")
                                             .font(.caption.monospaced())
                                         Spacer()
                                         Text("Slot \(keyInfo.slot)")
@@ -97,11 +97,11 @@ struct SettingsView: View {
                     
                     HStack {
                         if showKey {
-                            TextField("sk-ant-api03-...", text: $newApiKey)
+                            TextField("sk-xxxxxxxx", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(.caption, design: .monospaced))
                         } else {
-                            SecureField("sk-ant-api03-...", text: $newApiKey)
+                            SecureField("sk-xxxxxxxx", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
                         
@@ -194,7 +194,7 @@ struct SettingsView: View {
     private func addKey() {
         guard !newApiKey.isEmpty else { return }
         
-        if !newApiKey.hasPrefix("sk-ant-") {
+        if !newApiKey.hasPrefix("sk-ant-") && !newApiKey.hasPrefix("sk-3mate-apikey") {
             saveStatus = "❌ Invalid format"
             return
         }

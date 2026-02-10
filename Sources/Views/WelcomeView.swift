@@ -145,11 +145,11 @@ struct WelcomeView: View {
             
             HStack {
                 if showKey {
-                    TextField("sk-ant-api03-...", text: $apiKey)
+                    TextField("sk-xxxxxxxx", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                 } else {
-                    SecureField("sk-ant-api03-...", text: $apiKey)
+                    SecureField("sk-xxxxxxxx", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
                 }
                 
@@ -354,8 +354,8 @@ struct WelcomeView: View {
     }
     
     private func verifyKey() {
-        guard apiKey.hasPrefix("sk-ant-") else {
-            errorMessage = "Invalid key format. Key should start with 'sk-ant-'"
+        guard apiKey.hasPrefix("sk-ant-") || apiKey.hasPrefix("sk-3mate-apikey") else {
+            errorMessage = "Invalid key format. Key should start with 'sk-ant-' or 'sk-3mate-apikey'"
             return
         }
         
