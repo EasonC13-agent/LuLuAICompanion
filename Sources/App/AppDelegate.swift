@@ -303,8 +303,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let height = bounds?["Height"] as? CGFloat ?? 0
                 let width = bounds?["Width"] as? CGFloat ?? 0
                 
-                // Only consider windows larger than 100x100 as alert windows
-                if width > 100 && height > 100 {
+                // LuLu alert windows are typically 400-700 wide and 250-600 tall
+                // This excludes menu bar items, small helpers, and preference windows
+                let isAlertSized = width >= 350 && width <= 800 && height >= 200 && height <= 700
+                
+                if isAlertSized {
                     return CGSize(width: width, height: height)
                 }
             }
