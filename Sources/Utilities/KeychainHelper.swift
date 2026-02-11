@@ -25,7 +25,7 @@ enum KeychainHelper {
     }
     
     private static var keysFile: URL {
-        return storageDir.appendingPathComponent("keys.json")
+        return storageDir.appendingPathComponent("config.json")
     }
     
     // MARK: - XOR Obfuscation
