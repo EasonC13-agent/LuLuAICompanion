@@ -231,19 +231,6 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
                 
-                Button("Open System Settings") {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                }
-                .buttonStyle(.borderedProminent)
-                
-                Button("Check Again") {
-                    _ = monitor.checkAccessibilityPermission()
-                }
-                .buttonStyle(.bordered)
-                
-                Divider()
-                    .padding(.vertical, 8)
-                
                 // Important note for users who updated the app
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -271,6 +258,16 @@ struct WelcomeView: View {
                 .padding()
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
+                
+                Button("Open System Settings") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("Check Again") {
+                    _ = monitor.checkAccessibilityPermission()
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
