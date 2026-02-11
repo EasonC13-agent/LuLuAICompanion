@@ -19,8 +19,8 @@ enum AIProvider: String {
     var model: String {
         switch self {
         case .anthropic: return "claude-haiku-4-5"
-        case .openai: return "gpt-4o-mini"
-        case .gemini: return "gemini-2.0-flash"
+        case .openai: return "gpt-5-nano-2025-08-07"
+        case .gemini: return "gemini-3-flash-preview"
         case .threeMate: return "claude-haiku-4-5"
         }
     }
@@ -61,7 +61,7 @@ class AIClient: ObservableObject {
     private let anthropicURL = "https://api.anthropic.com/v1/messages"
     private let threeMateURL = "https://platform.3mate.io/v1/messages"
     private let openaiURL = "https://api.openai.com/v1/chat/completions"
-    private let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    private let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
     
     static let shared = AIClient()
     
