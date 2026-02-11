@@ -40,9 +40,9 @@ struct WelcomeView: View {
                 case 0:
                     checkingExistingKeysView
                 case 1:
-                    apiKeySetupView
-                case 2:
                     accessibilitySetupView
+                case 2:
+                    apiKeySetupView
                 case 3:
                     completionView
                 default:
@@ -56,12 +56,6 @@ struct WelcomeView: View {
             
             // Footer with navigation
             HStack {
-                if currentStep > 0 && currentStep < 3 {
-                    Button("Back") {
-                        withAnimation { currentStep -= 1 }
-                    }
-                }
-                
                 Spacer()
                 
                 // Step indicators
@@ -75,15 +69,14 @@ struct WelcomeView: View {
                 
                 Spacer()
                 
-                if currentStep < 3 {
-                    Button(currentStep == 0 ? "Continue" : "Next") {
-                        advanceStep()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canAdvance)
-                } else {
+                if currentStep == 3 {
                     Button("Get Started") {
                         complete()
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else if canAdvance {
+                    Button(currentStep == 0 ? "Continue" : "Next") {
+                        advanceStep()
                     }
                     .buttonStyle(.borderedProminent)
                 }
@@ -332,9 +325,9 @@ struct WelcomeView: View {
         case 0:
             return !isChecking
         case 1:
-            return foundExistingKeys || !apiKey.isEmpty
+            return monitor.accessibilityEnabled
         case 2:
-            return true // Accessibility is optional
+            return foundExistingKeys || !apiKey.isEmpty
         default:
             return true
         }
@@ -357,14 +350,22 @@ struct WelcomeView: View {
     
     private func advanceStep() {
         withAnimation {
-            if currentStep == 0 && foundExistingKeys {
-                // Skip API key entry if we already have keys
-                currentStep = 2
-            } else if currentStep == 1 && !apiKey.isEmpty {
+            if currentStep == 0 {
+                // Go to accessibility
+                currentStep = 1
+            } else if currentStep == 1 {
+                // Accessibility done, go to API key
+                if foundExistingKeys {
+                    // Skip API key entry if we already have keys
+                    currentStep = 3
+                } else {
+                    currentStep = 2
+                }
+            } else if currentStep == 2 && !apiKey.isEmpty {
                 // Save the key
                 aiClient.addAPIKey(apiKey)
                 foundExistingKeys = true
-                currentStep = 2
+                currentStep = 3
             } else {
                 currentStep += 1
             }
