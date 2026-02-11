@@ -246,60 +246,47 @@ struct WelcomeView: View {
     }
     
     private var accessibilitySetupView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: monitor.accessibilityEnabled ? "checkmark.circle.fill" : "hand.raised.fill")
-                .font(.system(size: 48))
-                .foregroundColor(monitor.accessibilityEnabled ? .green : .orange)
-            
-            Text("Accessibility Permission")
-                .font(.headline)
-            
-            if monitor.accessibilityEnabled {
-                Text("Accessibility access is enabled! The app can now detect LuLu alert windows.")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-            } else {
-                Text("This app needs Accessibility permission to detect when LuLu shows a firewall alert.")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
+        ScrollView {
+            VStack(spacing: 16) {
+                Image(systemName: monitor.accessibilityEnabled ? "checkmark.circle.fill" : "hand.raised.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(monitor.accessibilityEnabled ? .green : .orange)
                 
-                // Important note for users who updated the app
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
-                        Text("Updated the app?")
-                            .fontWeight(.medium)
-                    }
-                    .font(.caption)
-                    
-                    Text("If you previously granted permission to an older version, you need to:")
-                        .font(.caption)
+                Text("Accessibility Permission")
+                    .font(.headline)
+                
+                if monitor.accessibilityEnabled {
+                    Text("Accessibility access is enabled! The app can now detect LuLu alert windows.")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("This app needs Accessibility permission to detect when LuLu shows a firewall alert.")
+                        .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("1. Find \"LuLuAICompanion\" in the list")
-                        Text("2. Select it and click the \"-\" button to remove")
-                        Text("3. Click \"+\" and re-add the app from /Applications")
-                        Text("4. Toggle the switch ON")
+                    Button("Open System Settings") {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.leading, 16)
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("Check Again") {
+                        _ = monitor.checkAccessibilityPermission()
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    // Compact note for updated app
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                        Text("Updated the app? Remove the old entry in System Settings > Accessibility, then re-add it.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(10)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
                 }
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
-                
-                Button("Open System Settings") {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                }
-                .buttonStyle(.borderedProminent)
-                
-                Button("Check Again") {
-                    _ = monitor.checkAccessibilityPermission()
-                }
-                .buttonStyle(.bordered)
             }
         }
     }
