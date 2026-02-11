@@ -18,14 +18,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusBar()
         setupNotifications()
         
-        // Check if first launch or needs setup
-        if !UserDefaults.standard.bool(forKey: "hasCompletedSetup") || !claudeClient.hasAPIKey {
+        // Check if first launch, needs setup, or not fully configured
+        let needsSetup = !UserDefaults.standard.bool(forKey: "hasCompletedSetup")
+            || !claudeClient.hasAPIKey
+            || !monitor.checkAccessibilityPermission()
+        
+        if needsSetup {
             showWelcomeWindow()
         } else {
             // Auto-start monitoring if accessibility is enabled
-            if monitor.checkAccessibilityPermission() {
-                monitor.startMonitoring()
-            }
+            monitor.startMonitoring()
         }
     }
     

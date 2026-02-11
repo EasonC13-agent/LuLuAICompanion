@@ -85,10 +85,11 @@ if args.count > 1 {
 }
 
 // No CLI args - start the app normally
+// Use NSApplicationMain for proper lifecycle management
+// AppDelegate is set via Info.plist NSPrincipalClass
 let app = NSApplication.shared
-// Keep a strong reference - NSApplication.delegate is weak and would deallocate otherwise
 let delegate = AppDelegate()
+// Store delegate as associated object to prevent deallocation (NSApp.delegate is weak)
+objc_setAssociatedObject(app, "appDelegate", delegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 app.delegate = delegate
-_ = withExtendedLifetime(delegate) {
-    app.run()
-}
+app.run()

@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct StatusBarView: View {
-    @ObservedObject private var monitor = AccessibilityMonitor.shared
-    @ObservedObject private var claudeClient = ClaudeAPIClient.shared
+    @StateObject private var monitor = AccessibilityMonitor.shared
+    @StateObject private var claudeClient = ClaudeAPIClient.shared
     @State private var showingSettings = false
     @State private var showingAccessibilityHelp = false
     

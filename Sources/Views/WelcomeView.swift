@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct WelcomeView: View {
-    @ObservedObject private var claudeClient = ClaudeAPIClient.shared
-    @ObservedObject private var monitor = AccessibilityMonitor.shared
+    @StateObject private var claudeClient = ClaudeAPIClient.shared
+    @StateObject private var monitor = AccessibilityMonitor.shared
     
     @State private var apiKey: String = ""
     @State private var showKey = false
