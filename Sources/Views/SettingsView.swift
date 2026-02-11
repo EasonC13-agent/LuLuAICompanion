@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject private var claudeClient = ClaudeAPIClient.shared
+    @ObservedObject private var aiClient = AIClient.shared
     @ObservedObject private var monitor = AccessibilityMonitor.shared
     
     @State private var newApiKey: String = ""
@@ -15,22 +15,22 @@ struct SettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Claude API Keys")
+                        Text("AI Provider Keys")
                             .font(.headline)
                         
                         Spacer()
                         
-                        Text("\(claudeClient.apiKeysConfigured) configured")
+                        Text("\(aiClient.apiKeysConfigured) configured")
                             .font(.caption)
-                            .foregroundColor(claudeClient.apiKeysConfigured > 0 ? .green : .red)
+                            .foregroundColor(aiClient.apiKeysConfigured > 0 ? .green : .red)
                     }
                     
                     // Show configured keys count and failover status
-                    if claudeClient.apiKeysConfigured > 1 {
+                    if aiClient.apiKeysConfigured > 1 {
                         HStack {
                             Image(systemName: "checkmark.shield.fill")
                                 .foregroundColor(.green)
-                            Text("Failover enabled")
+                            Text("Failover enabled across providers")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -55,19 +55,30 @@ struct SettingsView: View {
                             }
                             
                             // Keychain keys
-                            ForEach(claudeClient.listKeys(), id: \.slot) { keyInfo in
+                            ForEach(aiClient.listKeys(), id: \.slot) { keyInfo in
                                 if keyInfo.hasKey {
                                     HStack {
-                                        Image(systemName: "key.fill")
-                                            .foregroundColor(.orange)
+                                        if let provider = keyInfo.provider {
+                                            Image(systemName: provider.icon)
+                                                .foregroundColor(.orange)
+                                                .help(provider.rawValue)
+                                        } else {
+                                            Image(systemName: "key.fill")
+                                                .foregroundColor(.orange)
+                                        }
                                         Text(keyInfo.prefix ?? "sk-...")
                                             .font(.caption.monospaced())
+                                        if let provider = keyInfo.provider {
+                                            Text("(\(provider.rawValue))")
+                                                .font(.caption2)
+                                                .foregroundColor(.blue)
+                                        }
                                         Spacer()
                                         Text("Slot \(keyInfo.slot)")
                                             .font(.caption2)
                                             .foregroundColor(.secondary)
                                         Button(action: {
-                                            claudeClient.removeAPIKey(slot: keyInfo.slot)
+                                            aiClient.removeAPIKey(slot: keyInfo.slot)
                                         }) {
                                             Image(systemName: "trash")
                                                 .foregroundColor(.red)
@@ -78,7 +89,7 @@ struct SettingsView: View {
                                 }
                             }
                             
-                            if claudeClient.apiKeysConfigured == 0 && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] == nil {
+                            if aiClient.apiKeysConfigured == 0 && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] == nil {
                                 Text("No API keys configured")
                                     .font(.caption)
                                     .foregroundColor(.red)
@@ -97,11 +108,11 @@ struct SettingsView: View {
                     
                     HStack {
                         if showKey {
-                            TextField("sk-xxxxxxxx", text: $newApiKey)
+                            TextField("sk-... or AIza...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(.caption, design: .monospaced))
                         } else {
-                            SecureField("sk-xxxxxxxx", text: $newApiKey)
+                            SecureField("sk-... or AIza...", text: $newApiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
                         
@@ -122,14 +133,23 @@ struct SettingsView: View {
                                 .foregroundColor(status.contains("✓") ? .green : .red)
                                 .font(.caption)
                         }
-                        
-                        Spacer()
-                        
-                        Link("Get API Key", destination: URL(string: "https://console.anthropic.com/")!)
-                            .font(.caption)
                     }
                     
-                    Text("Multiple keys provide automatic failover when one hits rate limits or fails.")
+                    // Provider links
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Get an API key:")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 12) {
+                            Link("Anthropic", destination: URL(string: "https://console.anthropic.com/")!)
+                            Link("OpenAI", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                            Link("Gemini", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                            Link("3mate", destination: URL(string: "https://platform.3mate.io")!)
+                        }
+                        .font(.caption2)
+                    }
+                    
+                    Text("Supports Anthropic (sk-ant-), OpenAI (sk-), Gemini (AIza), and 3mate keys. Multiple keys provide automatic failover.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -188,21 +208,24 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 420, height: 480)
+        .frame(width: 420, height: 520)
     }
     
     private func addKey() {
         guard !newApiKey.isEmpty else { return }
         
-        if !newApiKey.hasPrefix("sk-ant-") && !newApiKey.hasPrefix("sk-3mate-apikey") {
-            saveStatus = "❌ Invalid format"
+        let cleanedKey = newApiKey.components(separatedBy: .whitespacesAndNewlines).joined()
+        
+        if !AIProvider.isValidKey(cleanedKey) {
+            saveStatus = "❌ Invalid format (use sk-ant-, sk-, AIza, or sk-3mate-)"
             return
         }
         
-        let slot = claudeClient.nextAvailableSlot()
-        claudeClient.addAPIKey(newApiKey, slot: slot)
+        let provider = AIProvider.detect(from: cleanedKey)
+        let slot = aiClient.nextAvailableSlot()
+        aiClient.addAPIKey(cleanedKey, slot: slot)
         newApiKey = ""
-        saveStatus = "✓ Added to slot \(slot)"
+        saveStatus = "✓ \(provider.rawValue) key added to slot \(slot)"
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             saveStatus = nil

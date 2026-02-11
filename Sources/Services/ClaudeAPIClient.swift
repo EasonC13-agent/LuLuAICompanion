@@ -1,26 +1,69 @@
 import Foundation
 
-/// Client for Claude API with multi-key failover support
-class ClaudeAPIClient: ObservableObject {
+/// AI provider types
+enum AIProvider: String {
+    case anthropic = "Anthropic"
+    case openai = "OpenAI"
+    case gemini = "Gemini"
+    case threeMate = "3mate"
+    
+    var icon: String {
+        switch self {
+        case .anthropic: return "brain.head.profile"
+        case .openai: return "sparkles"
+        case .gemini: return "diamond"
+        case .threeMate: return "star.circle"
+        }
+    }
+    
+    var model: String {
+        switch self {
+        case .anthropic: return "claude-haiku-4-5"
+        case .openai: return "gpt-4o-mini"
+        case .gemini: return "gemini-2.0-flash"
+        case .threeMate: return "claude-haiku-4-5"
+        }
+    }
+    
+    static func detect(from apiKey: String) -> AIProvider {
+        if apiKey.hasPrefix("sk-3mate") {
+            return .threeMate
+        } else if apiKey.hasPrefix("sk-ant-") {
+            return .anthropic
+        } else if apiKey.hasPrefix("AIza") {
+            return .gemini
+        } else if apiKey.hasPrefix("sk-") {
+            return .openai
+        } else {
+            return .anthropic // fallback
+        }
+    }
+    
+    /// Validate key format
+    static func isValidKey(_ key: String) -> Bool {
+        return key.hasPrefix("sk-ant-") ||
+               key.hasPrefix("sk-3mate") ||
+               key.hasPrefix("AIza") ||
+               (key.hasPrefix("sk-") && key.count > 20)
+    }
+}
+
+// Keep typealias for backward compatibility
+typealias ClaudeAPIClient = AIClient
+
+/// Client for AI API with multi-key failover support (Anthropic, OpenAI, Gemini, 3mate)
+class AIClient: ObservableObject {
     @Published var isAnalyzing = false
     @Published var lastError: String?
     @Published var apiKeysConfigured: Int = 0
     
     // API endpoints
     private let anthropicURL = "https://api.anthropic.com/v1/messages"
-    private let luluaiURL = "https://platform.3mate.io/v1/messages"
+    private let threeMateURL = "https://platform.3mate.io/v1/messages"
+    private let openaiURL = "https://api.openai.com/v1/chat/completions"
+    private let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
     
-    /// Determine which endpoint to use based on API key prefix
-    private func getBaseURL(for apiKey: String) -> String {
-        if apiKey.hasPrefix("sk-3mate") {
-            return luluaiURL  // LuLuAI Platform
-        } else {
-            return anthropicURL  // Original Anthropic API
-        }
-    }
-    private let model = "claude-haiku-4-5"
-    
-    static let shared = ClaudeAPIClient()
+    static let shared = AIClient()
     
     private init() {
         refreshKeyCount()
@@ -64,7 +107,6 @@ class ClaudeAPIClient: ObservableObject {
     
     /// Add a new API key (auto-cleans whitespace)
     func addAPIKey(_ key: String, slot: Int = 0) {
-        // Clean the key - remove all whitespace and newlines
         let cleanedKey = key.components(separatedBy: .whitespacesAndNewlines).joined()
         
         guard !cleanedKey.isEmpty else {
@@ -75,7 +117,8 @@ class ClaudeAPIClient: ObservableObject {
         let keyName = slot == 0 ? "claude_api_key" : "claude_api_key_\(slot)"
         KeychainHelper.save(key: keyName, value: cleanedKey)
         refreshKeyCount()
-        print("Saved key to slot \(slot): \(String(cleanedKey.prefix(15)))...")
+        let provider = AIProvider.detect(from: cleanedKey)
+        print("Saved \(provider.rawValue) key to slot \(slot): \(String(cleanedKey.prefix(15)))...")
     }
     
     /// Remove an API key
@@ -91,22 +134,22 @@ class ClaudeAPIClient: ObservableObject {
         for i in 1...5 {
             if KeychainHelper.get(key: "claude_api_key_\(i)") == nil { return i }
         }
-        return 0 // Overwrite primary if all full
+        return 0
     }
     
     /// List all key slots and their status (for CLI)
-    func listKeys() -> [(slot: Int, hasKey: Bool, prefix: String?)] {
-        var result: [(slot: Int, hasKey: Bool, prefix: String?)] = []
+    func listKeys() -> [(slot: Int, hasKey: Bool, prefix: String?, provider: AIProvider?)] {
+        var result: [(slot: Int, hasKey: Bool, prefix: String?, provider: AIProvider?)] = []
         
         if let key = KeychainHelper.get(key: "claude_api_key") {
-            result.append((0, true, String(key.prefix(12)) + "..."))
+            result.append((0, true, String(key.prefix(12)) + "...", AIProvider.detect(from: key)))
         } else {
-            result.append((0, false, nil))
+            result.append((0, false, nil, nil))
         }
         
         for i in 1...5 {
             if let key = KeychainHelper.get(key: "claude_api_key_\(i)") {
-                result.append((i, true, String(key.prefix(12)) + "..."))
+                result.append((i, true, String(key.prefix(12)) + "...", AIProvider.detect(from: key)))
             }
         }
         
@@ -126,34 +169,32 @@ class ClaudeAPIClient: ObservableObject {
         
         var lastError: Error?
         
-        // Try each key until one works
         print("\n>>> Starting analysis with \(keys.count) key(s)")
         for (index, key) in keys.enumerated() {
-            print("\n>>> Trying key \(index + 1)/\(keys.count): \(String(key.prefix(20)))...")
+            let provider = AIProvider.detect(from: key)
+            print("\n>>> Trying key \(index + 1)/\(keys.count) [\(provider.rawValue)]: \(String(key.prefix(20)))...")
             do {
                 let prompt = buildPrompt(for: alert)
                 let response = try await sendRequest(prompt: prompt, apiKey: key)
                 let analysis = parseResponse(response, for: alert)
                 
-                // Success! If this wasn't the first key, log it
                 if index > 0 {
-                    print("API key \(index + 1) succeeded after \(index) failures")
+                    print("Key \(index + 1) [\(provider.rawValue)] succeeded after \(index) failures")
                 }
                 
                 return analysis
             } catch let error as APIError {
                 lastError = error
                 
-                // Only retry on rate limit or server errors
                 switch error {
                 case .httpError(let code, _) where code == 429 || code >= 500:
                     print("Key \(index + 1) failed with \(code), trying next...")
                     continue
-                case .httpError(let code, _) where code == 401:
-                    print("Key \(index + 1) is invalid (401), trying next...")
+                case .httpError(let code, _) where code == 401 || code == 403:
+                    print("Key \(index + 1) is invalid (\(code)), trying next...")
                     continue
                 default:
-                    throw error // Don't retry on other errors
+                    throw error
                 }
             } catch {
                 lastError = error
@@ -161,7 +202,6 @@ class ClaudeAPIClient: ObservableObject {
             }
         }
         
-        // All keys failed
         throw lastError ?? APIError.noAPIKey
     }
     
@@ -206,52 +246,52 @@ class ClaudeAPIClient: ObservableObject {
     
     // MARK: - API Request
     
-    // Claude Code version for stealth mode
     private let claudeCodeVersion = "2.1.2"
     
     private func sendRequest(prompt: String, apiKey: String) async throws -> String {
-        let isOAuth = apiKey.hasPrefix("sk-ant-oat")
-        let isLuLuAI = apiKey.hasPrefix("sk-3mate")
-        let baseURL = getBaseURL(for: apiKey)
+        let provider = AIProvider.detect(from: apiKey)
         
-        // Debug: Log key info
-        let keyPrefix = String(apiKey.prefix(25))
+        switch provider {
+        case .anthropic:
+            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey, isOAuth: apiKey.hasPrefix("sk-ant-oat"))
+        case .threeMate:
+            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey, isOAuth: false, baseURL: threeMateURL)
+        case .openai:
+            return try await sendOpenAIRequest(prompt: prompt, apiKey: apiKey)
+        case .gemini:
+            return try await sendGeminiRequest(prompt: prompt, apiKey: apiKey)
+        }
+    }
+    
+    // MARK: - Anthropic / 3mate Request
+    
+    private func sendAnthropicRequest(prompt: String, apiKey: String, isOAuth: Bool, baseURL: String? = nil) async throws -> String {
+        let url = baseURL ?? anthropicURL
+        
         print("=== API Request Debug ===")
-        print("Key prefix (25 chars): \(keyPrefix)")
-        print("Key length: \(apiKey.count)")
-        print("isOAuth: \(isOAuth), isLuLuAI: \(isLuLuAI)")
-        print("Using endpoint: \(baseURL)")
+        print("Provider: \(baseURL != nil ? "3mate" : "Anthropic")")
+        print("Using endpoint: \(url)")
         
-        var request = URLRequest(url: URL(string: baseURL)!)
+        var request = URLRequest(url: URL(string: url)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         
-        if isLuLuAI {
-            // LuLuAI Platform - use x-api-key header
+        if baseURL == threeMateURL {
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            print("AUTH MODE: LuLuAI Platform (mateapikey)")
         } else if isOAuth {
-            // Stealth mode: Mimic Claude Code's headers exactly
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             request.setValue("claude-code-20250219,oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
             request.setValue("claude-cli/\(claudeCodeVersion) (external, cli)", forHTTPHeaderField: "User-Agent")
             request.setValue("cli", forHTTPHeaderField: "x-app")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            print("AUTH MODE: OAuth (Bearer token)")
         } else {
-            // Regular Anthropic API key - use x-api-key header
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            print("AUTH MODE: Anthropic API Key (x-api-key)")
         }
-        
-        // Debug: Print all headers
-        print("All headers:")
-        request.allHTTPHeaderFields?.forEach { print("  \($0.key): \($0.value)") }
-        print("=========================")
         
         request.timeoutInterval = 30
         
+        let model = AIProvider.detect(from: apiKey).model
         var body: [String: Any] = [
             "model": model,
             "max_tokens": 1024,
@@ -260,8 +300,6 @@ class ClaudeAPIClient: ObservableObject {
             ]
         ]
         
-        // For OAuth tokens, MUST include Claude Code identity as FIRST system block
-        // Additional instructions go in separate blocks (array format required)
         if isOAuth {
             body["system"] = [
                 ["type": "text", "text": "You are Claude Code, Anthropic's official CLI for Claude."],
@@ -270,11 +308,6 @@ class ClaudeAPIClient: ObservableObject {
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        // Debug: Print request body
-        if let bodyData = request.httpBody, let bodyString = String(data: bodyData, encoding: .utf8) {
-            print("Request body: \(bodyString)")
-        }
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -290,11 +323,120 @@ class ClaudeAPIClient: ObservableObject {
             throw APIError.httpError(statusCode: httpResponse.statusCode, message: errorBody)
         }
         
-        // Parse Claude response
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
               let firstContent = content.first,
               let text = firstContent["text"] as? String else {
+            throw APIError.parseError
+        }
+        
+        return text
+    }
+    
+    // MARK: - OpenAI Request
+    
+    private func sendOpenAIRequest(prompt: String, apiKey: String) async throws -> String {
+        print("=== API Request Debug ===")
+        print("Provider: OpenAI")
+        print("Using endpoint: \(openaiURL)")
+        
+        var request = URLRequest(url: URL(string: openaiURL)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 30
+        
+        let body: [String: Any] = [
+            "model": AIProvider.openai.model,
+            "max_tokens": 1024,
+            "messages": [
+                ["role": "system", "content": "You are a macOS firewall security advisor. Analyze connections and respond in JSON."],
+                ["role": "user", "content": prompt]
+            ]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        print("[DEBUG] Response status: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode != 200 {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("[DEBUG] Error response: \(errorBody)")
+            throw APIError.httpError(statusCode: httpResponse.statusCode, message: errorBody)
+        }
+        
+        // OpenAI response format: { choices: [{ message: { content: "..." } }] }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let text = message["content"] as? String else {
+            throw APIError.parseError
+        }
+        
+        return text
+    }
+    
+    // MARK: - Gemini Request
+    
+    private func sendGeminiRequest(prompt: String, apiKey: String) async throws -> String {
+        let urlString = "\(geminiBaseURL)?key=\(apiKey)"
+        
+        print("=== API Request Debug ===")
+        print("Provider: Gemini")
+        print("Using endpoint: \(geminiBaseURL)?key=***")
+        
+        var request = URLRequest(url: URL(string: urlString)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+        
+        let systemInstruction = "You are a macOS firewall security advisor. Analyze connections and respond in JSON."
+        
+        let body: [String: Any] = [
+            "system_instruction": [
+                "parts": [["text": systemInstruction]]
+            ],
+            "contents": [
+                [
+                    "parts": [["text": prompt]]
+                ]
+            ],
+            "generationConfig": [
+                "maxOutputTokens": 1024
+            ]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        print("[DEBUG] Response status: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode != 200 {
+            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("[DEBUG] Error response: \(errorBody)")
+            throw APIError.httpError(statusCode: httpResponse.statusCode, message: errorBody)
+        }
+        
+        // Gemini response format: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let firstCandidate = candidates.first,
+              let content = firstCandidate["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let firstPart = parts.first,
+              let text = firstPart["text"] as? String else {
             throw APIError.parseError
         }
         
@@ -306,7 +448,6 @@ class ClaudeAPIClient: ObservableObject {
     private func parseResponse(_ response: String, for alert: ConnectionAlert) -> AIAnalysis {
         var analysis = AIAnalysis(alert: alert)
         
-        // Find JSON in response
         if let jsonStart = response.firstIndex(of: "{"),
            let jsonEnd = response.lastIndex(of: "}") {
             let jsonString = String(response[jsonStart...jsonEnd])
@@ -350,7 +491,7 @@ class ClaudeAPIClient: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .noAPIKey:
-                return "No API key configured. Please add your Claude API key."
+                return "No API key configured. Please add an API key."
             case .invalidResponse:
                 return "Invalid response from server"
             case .httpError(let code, let message):

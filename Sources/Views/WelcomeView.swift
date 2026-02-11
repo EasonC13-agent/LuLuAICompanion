@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WelcomeView: View {
-    @StateObject private var claudeClient = ClaudeAPIClient.shared
+    @StateObject private var aiClient = AIClient.shared
     @StateObject private var monitor = AccessibilityMonitor.shared
     
     @State private var apiKey: String = ""
@@ -110,14 +110,14 @@ struct WelcomeView: View {
                     .font(.system(size: 48))
                     .foregroundColor(.green)
                 
-                Text("Found \(claudeClient.apiKeysConfigured) API key(s)!")
+                Text("Found \(aiClient.apiKeysConfigured) API key(s)!")
                     .font(.headline)
                 
                 Text("We detected existing Claude API keys from OpenClaw or environment variables. You're all set!")
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
                 
-                if claudeClient.apiKeysConfigured > 1 {
+                if aiClient.apiKeysConfigured > 1 {
                     Text("Multiple keys will be used for automatic failover.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -284,9 +284,9 @@ struct WelcomeView: View {
             
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Image(systemName: claudeClient.hasAPIKey ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundColor(claudeClient.hasAPIKey ? .green : .red)
-                    Text("API Key: \(claudeClient.apiKeysConfigured) configured")
+                    Image(systemName: aiClient.hasAPIKey ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(aiClient.hasAPIKey ? .green : .red)
+                    Text("API Key: \(aiClient.apiKeysConfigured) configured")
                 }
                 
                 HStack {
@@ -325,8 +325,8 @@ struct WelcomeView: View {
         isChecking = true
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            claudeClient.refreshKeyCount()
-            foundExistingKeys = claudeClient.hasAPIKey
+            aiClient.refreshKeyCount()
+            foundExistingKeys = aiClient.hasAPIKey
             isChecking = false
             
             // If keys found, skip to step 2
@@ -343,7 +343,7 @@ struct WelcomeView: View {
                 currentStep = 2
             } else if currentStep == 1 && !apiKey.isEmpty {
                 // Save the key
-                claudeClient.addAPIKey(apiKey)
+                aiClient.addAPIKey(apiKey)
                 foundExistingKeys = true
                 currentStep = 2
             } else {
@@ -353,8 +353,8 @@ struct WelcomeView: View {
     }
     
     private func verifyKey() {
-        guard apiKey.hasPrefix("sk-ant-") || apiKey.hasPrefix("sk-3mate-apikey") else {
-            errorMessage = "Invalid key format. Key should start with 'sk-ant-' or 'sk-3mate-apikey'"
+        guard AIProvider.isValidKey(apiKey) else {
+            errorMessage = "Invalid key format. Supported: sk-ant- (Anthropic), sk- (OpenAI), AIza (Gemini), sk-3mate- (3mate)"
             return
         }
         
@@ -366,7 +366,7 @@ struct WelcomeView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isChecking = false
             if apiKey.count > 20 {
-                claudeClient.addAPIKey(apiKey)
+                aiClient.addAPIKey(apiKey)
                 currentStep = 2
             } else {
                 errorMessage = "Key appears too short"

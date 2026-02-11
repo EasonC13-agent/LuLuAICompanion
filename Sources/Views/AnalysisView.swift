@@ -51,7 +51,7 @@ class AnalysisViewModel: ObservableObject {
         self.knownService = nil
         
         Task {
-            let client = ClaudeAPIClient.shared
+            let client = AIClient.shared
             if client.hasAPIKey {
                 do {
                     let analysis = try await client.analyzeConnection(self.alert)
@@ -155,7 +155,7 @@ struct AnalysisView: View {
                         
                         // Show key input if it's an API key error
                         if error.contains("API key") || error.contains("invalid") || error.contains("401") {
-                            APIKeyInputSection(claudeClient: ClaudeAPIClient.shared)
+                            APIKeyInputSection(aiClient: AIClient.shared)
                         }
                     }
                     .padding()
@@ -278,7 +278,7 @@ struct DetailRow: View {
 // MARK: - Inline API Key Input
 
 struct APIKeyInputSection: View {
-    @ObservedObject var claudeClient: ClaudeAPIClient
+    @ObservedObject var aiClient: AIClient
     @State private var newKey: String = ""
     @State private var showKey = false
     @State private var statusMessage: String?
@@ -295,11 +295,11 @@ struct APIKeyInputSection: View {
             // Key input
             HStack {
                 if showKey {
-                    TextField("sk-xxxxxxxx", text: $newKey)
+                    TextField("sk-... or AIza...", text: $newKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.caption, design: .monospaced))
                 } else {
-                    SecureField("sk-xxxxxxxx", text: $newKey)
+                    SecureField("sk-... or AIza...", text: $newKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
                 }
@@ -326,16 +326,21 @@ struct APIKeyInputSection: View {
             }
             
             // Show configured keys
-            DisclosureGroup("Keys: \(claudeClient.apiKeysConfigured) configured", isExpanded: $showingKeys) {
+            DisclosureGroup("Keys: \(aiClient.apiKeysConfigured) configured", isExpanded: $showingKeys) {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(claudeClient.listKeys(), id: \.slot) { keyInfo in
+                    ForEach(aiClient.listKeys(), id: \.slot) { keyInfo in
                         if keyInfo.hasKey {
                             HStack {
+                                if let provider = keyInfo.provider {
+                                    Text("[\(provider.rawValue)]")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue)
+                                }
                                 Text(keyInfo.prefix ?? "sk-...")
                                     .font(.caption2.monospaced())
                                 Spacer()
                                 Button(action: {
-                                    claudeClient.removeAPIKey(slot: keyInfo.slot)
+                                    aiClient.removeAPIKey(slot: keyInfo.slot)
                                 }) {
                                     Image(systemName: "trash")
                                         .font(.caption2)
@@ -350,42 +355,32 @@ struct APIKeyInputSection: View {
             }
             .font(.caption2)
             
-            // Help text
-            HStack {
-                Text("Or run:")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                Text("claude setup-token")
-                    .font(.caption2.monospaced())
-                    .foregroundColor(.blue)
-                    .textSelection(.enabled)
+            // Provider links
+            HStack(spacing: 8) {
+                Link("Anthropic", destination: URL(string: "https://console.anthropic.com/")!)
+                Link("OpenAI", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                Link("Gemini", destination: URL(string: "https://aistudio.google.com/apikey")!)
+                Link("3mate", destination: URL(string: "https://platform.3mate.io")!)
             }
-            
-            Link(destination: URL(string: "https://console.anthropic.com/")!) {
-                HStack {
-                    Image(systemName: "arrow.up.right.square")
-                    Text("Get API Key")
-                }
-                .font(.caption2)
-            }
+            .font(.caption2)
         }
     }
     
     private func addKey() {
         guard !newKey.isEmpty else { return }
         
-        // Clean the key first
         let cleanedKey = newKey.components(separatedBy: .whitespacesAndNewlines).joined()
         
-        if !cleanedKey.hasPrefix("sk-ant-") && !cleanedKey.hasPrefix("sk-3mate-apikey") {
-            statusMessage = "⚠️ Invalid format (should start with sk-ant- or sk-3mate-apikey)"
+        if !AIProvider.isValidKey(cleanedKey) {
+            statusMessage = "⚠️ Invalid format (use sk-ant-, sk-, AIza, or sk-3mate-)"
             return
         }
         
-        let slot = claudeClient.nextAvailableSlot()
-        claudeClient.addAPIKey(cleanedKey, slot: slot)
+        let provider = AIProvider.detect(from: cleanedKey)
+        let slot = aiClient.nextAvailableSlot()
+        aiClient.addAPIKey(cleanedKey, slot: slot)
         newKey = ""
-        statusMessage = "✓ Key added! Click Retry."
+        statusMessage = "✓ \(provider.rawValue) key added! Click Retry."
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             statusMessage = nil

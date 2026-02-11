@@ -2,7 +2,7 @@ import SwiftUI
 
 struct StatusBarView: View {
     @StateObject private var monitor = AccessibilityMonitor.shared
-    @StateObject private var claudeClient = ClaudeAPIClient.shared
+    @StateObject private var aiClient = AIClient.shared
     @State private var showingSettings = false
     @State private var showingAccessibilityHelp = false
     
@@ -50,12 +50,12 @@ struct StatusBarView: View {
                 
                 StatusRow(
                     title: "API Keys",
-                    status: claudeClient.apiKeysConfigured > 0 ? "\(claudeClient.apiKeysConfigured) configured" : "Not Set",
-                    isOK: claudeClient.hasAPIKey,
+                    status: aiClient.apiKeysConfigured > 0 ? "\(aiClient.apiKeysConfigured) configured" : "Not Set",
+                    isOK: aiClient.hasAPIKey,
                     action: { showingSettings = true }
                 )
                 
-                if claudeClient.apiKeysConfigured > 1 {
+                if aiClient.apiKeysConfigured > 1 {
                     Text("  ↳ Failover enabled")
                         .font(.caption2)
                         .foregroundColor(.secondary)

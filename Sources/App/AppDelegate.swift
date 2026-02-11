@@ -11,7 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var initialLuLuWindowSize: CGSize?  // Track initial alert window size
     
     private let monitor = AccessibilityMonitor.shared
-    private let claudeClient = ClaudeAPIClient.shared
+    private let aiClient = AIClient.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
@@ -20,7 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Check if first launch, needs setup, or not fully configured
         let needsSetup = !UserDefaults.standard.bool(forKey: "hasCompletedSetup")
-            || !claudeClient.hasAPIKey
+            || !aiClient.hasAPIKey
             || !monitor.checkAccessibilityPermission()
         
         if needsSetup {
@@ -171,13 +171,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 
                 // Step 2: Analyze with Claude
-                if self.claudeClient.hasAPIKey {
+                if self.aiClient.hasAPIKey {
                     do {
-                        let analysis = try await self.claudeClient.analyzeConnection(enrichedAlert)
+                        let analysis = try await self.aiClient.analyzeConnection(enrichedAlert)
                         await MainActor.run { [weak viewModel] in
                             viewModel?.updateAnalysis(analysis)
                         }
-                    } catch let error as ClaudeAPIClient.APIError {
+                    } catch let error as AIClient.APIError {
                         print("Analysis error: \(error)")
                         
                         // Check if it's an authentication error (all keys invalid)
