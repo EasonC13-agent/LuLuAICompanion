@@ -11,7 +11,6 @@ struct WelcomeView: View {
     @State private var errorMessage: String?
     @State private var foundExistingKeys = false
     
-    @Environment(\.dismiss) private var dismiss
     var onComplete: (() -> Void)?
     
     var body: some View {

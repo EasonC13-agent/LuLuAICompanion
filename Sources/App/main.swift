@@ -86,6 +86,9 @@ if args.count > 1 {
 
 // No CLI args - start the app normally
 let app = NSApplication.shared
+// Keep a strong reference - NSApplication.delegate is weak and would deallocate otherwise
 let delegate = AppDelegate()
 app.delegate = delegate
-app.run()
+_ = withExtendedLifetime(delegate) {
+    app.run()
+}
