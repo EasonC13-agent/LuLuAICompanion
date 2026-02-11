@@ -5,8 +5,10 @@ struct StatusBarView: View {
     @StateObject private var aiClient = AIClient.shared
     @State private var showingSettings = false
     @State private var showingAccessibilityHelp = false
+    @State private var showingHistory = false
     
     var onShowWelcome: (() -> Void)?
+    var onShowHistory: (() -> Void)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -97,6 +99,11 @@ struct StatusBarView: View {
                     showingSettings = true
                 }
                 
+                Button("History") {
+                    onShowHistory?()
+                }
+                .buttonStyle(.borderless)
+                
                 Button("Setup") {
                     onShowWelcome?()
                 }
@@ -113,7 +120,7 @@ struct StatusBarView: View {
         .frame(width: 300)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
-                .frame(width: 450, height: 450)
+                .frame(width: 450, height: 550)
         }
         .alert("Accessibility Permission", isPresented: $showingAccessibilityHelp) {
             Button("OK", role: .cancel) { }

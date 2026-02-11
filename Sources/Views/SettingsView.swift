@@ -3,12 +3,12 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject private var aiClient = AIClient.shared
     @ObservedObject private var monitor = AccessibilityMonitor.shared
+    @ObservedObject private var history = HistoryManager.shared
     
     @State private var newApiKey: String = ""
     @State private var showKey = false
     @State private var saveStatus: String?
     @State private var expandedKeys = true
-    
     var body: some View {
         Form {
             // API Keys Section
@@ -157,6 +157,27 @@ struct SettingsView: View {
                 Text("API Configuration")
             }
             
+            // History Section
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Max History Entries")
+                        Spacer()
+                        Stepper("\(history.maxCount)", onIncrement: {
+                            history.maxCount = min(1000, history.maxCount + 10)
+                        }, onDecrement: {
+                            history.maxCount = max(10, history.maxCount - 10)
+                        })
+                    }
+                    
+                    Text("Currently \(history.entries.count) entries saved")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("History")
+            }
+            
             // Permissions Section
             Section {
                 VStack(alignment: .leading, spacing: 12) {
@@ -208,7 +229,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 420, height: 520)
+        .frame(width: 420, height: 600)
     }
     
     private func addKey() {

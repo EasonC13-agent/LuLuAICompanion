@@ -6,6 +6,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var analysisWindow: NSWindow?
     private var welcomeWindow: NSWindow?
+    private var historyWindow: NSWindow?
     private var currentViewModel: AnalysisViewModel?
     private var luluWindowMonitorTimer: Timer?
     private var initialLuLuWindowSize: CGSize?  // Track initial alert window size
@@ -124,6 +125,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onShowWelcome: { [weak self] in
                 self?.popover.performClose(nil)
                 self?.showWelcomeWindow()
+            },
+            onShowHistory: { [weak self] in
+                self?.popover.performClose(nil)
+                self?.showHistoryWindow()
             }
         ))
     }
@@ -136,6 +141,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             }
         }
+    }
+    
+    // MARK: - History Window
+    
+    private func showHistoryWindow() {
+        if let existing = historyWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 550, height: 500),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Analysis History"
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HistoryView())
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        historyWindow = window
+        NSApp.activate(ignoringOtherApps: true)
     }
     
     // MARK: - Alert Notifications
@@ -176,6 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         let analysis = try await self.aiClient.analyzeConnection(enrichedAlert)
                         await MainActor.run { [weak viewModel] in
                             viewModel?.updateAnalysis(analysis)
+                            HistoryManager.shared.save(alert: enrichedAlert, analysis: analysis)
                         }
                     } catch let error as AIClient.APIError {
                         print("Analysis error: \(error)")
@@ -318,6 +348,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func isLuLuAlertWindowVisible() -> Bool {
+        return getLuLuAlertWindowSize() != nil
+    }
+}
+   private func isLuLuAlertWindowVisible() -> Bool {
         return getLuLuAlertWindowSize() != nil
     }
 }

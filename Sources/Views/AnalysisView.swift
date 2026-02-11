@@ -32,6 +32,9 @@ class AnalysisViewModel: ObservableObject {
         self.knownService = analysis.knownService
         self.isLoadingAnalysis = false
         self.errorMessage = nil
+        
+        // Save to history
+        HistoryManager.shared.save(alert: self.alert, analysis: analysis)
     }
     
     func setError(_ message: String) {
