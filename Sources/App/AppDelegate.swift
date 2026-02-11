@@ -67,17 +67,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showWelcomeWindow() {
         let welcomeView = WelcomeView(onComplete: { [weak self] in
-            // Defer window close to next run loop to avoid releasing SwiftUI views
-            // during the callback (which causes autorelease pool crash)
+            // Order out (hide) instead of close to avoid NSHostingView deallocation crash
+            // The window will be deallocated when welcomeWindow is set to nil later
+            self?.welcomeWindow?.orderOut(nil)
+            
+            // Start monitoring after setup
+            if self?.monitor.checkAccessibilityPermission() == true {
+                self?.monitor.startMonitoring()
+            }
+            
+            // Defer cleanup to avoid releasing SwiftUI views in current autorelease pool
             DispatchQueue.main.async {
-                self?.welcomeWindow?.contentView = nil  // Detach SwiftUI first
-                self?.welcomeWindow?.close()
+                self?.welcomeWindow?.contentView = nil
                 self?.welcomeWindow = nil
-                
-                // Start monitoring after setup
-                if self?.monitor.checkAccessibilityPermission() == true {
-                    self?.monitor.startMonitoring()
-                }
             }
         })
         
