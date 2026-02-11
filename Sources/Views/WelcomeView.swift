@@ -137,18 +137,25 @@ struct WelcomeView: View {
         }
     }
     
+    private var detectedProvider: AIProvider? {
+        guard !apiKey.isEmpty else { return nil }
+        let cleaned = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count > 10 else { return nil }
+        return AIProvider.detect(from: cleaned)
+    }
+    
     private var apiKeySetupView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Enter your Claude API Key")
+            Text("Enter your API Key")
                 .font(.headline)
             
             HStack {
                 if showKey {
-                    TextField("sk-xxxxxxxx", text: $apiKey)
+                    TextField("Paste your API key here", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                 } else {
-                    SecureField("sk-xxxxxxxx", text: $apiKey)
+                    SecureField("Paste your API key here", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
                 }
                 
@@ -156,6 +163,18 @@ struct WelcomeView: View {
                     Image(systemName: showKey ? "eye.slash" : "eye")
                 }
                 .buttonStyle(.borderless)
+            }
+            
+            // Show detected provider
+            if let provider = detectedProvider {
+                HStack {
+                    Image(systemName: provider.icon)
+                        .foregroundColor(.green)
+                    Text("Detected: \(provider.rawValue)")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                        .fontWeight(.medium)
+                }
             }
             
             if let error = errorMessage {
@@ -177,33 +196,46 @@ struct WelcomeView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Don't have an API key?")
+                Text("Supported providers:")
                     .font(.caption)
                     .fontWeight(.medium)
                 
                 Link(destination: URL(string: "https://platform.3mate.io")!) {
                     HStack {
-                        Image(systemName: "arrow.up.right.square")
-                        Text("Get a free key from LuLu AI Platform")
+                        Image(systemName: "star.circle")
+                        Text("3mate Platform (free trial)")
                     }
                 }
                 .font(.caption)
                 
-                Text("Sign up at platform.3mate.io to get a free trial API key (starts with sk-3mate-)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Link(destination: URL(string: "https://console.anthropic.com/")!) {
+                    HStack {
+                        Image(systemName: "brain.head.profile")
+                        Text("Anthropic (Claude)")
+                    }
+                }
+                .font(.caption)
+                
+                Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
+                    HStack {
+                        Image(systemName: "sparkles")
+                        Text("OpenAI (GPT)")
+                    }
+                }
+                .font(.caption)
+                
+                Link(destination: URL(string: "https://aistudio.google.com/apikey")!) {
+                    HStack {
+                        Image(systemName: "diamond")
+                        Text("Google (Gemini)")
+                    }
+                }
+                .font(.caption)
                 
                 Divider()
                     .padding(.vertical, 4)
                 
-                Text("Already have a Claude API key from Anthropic? That works too!")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Divider()
-                    .padding(.vertical, 4)
-                
-                Text("• Your key is stored securely in macOS Keychain")
+                Text("• Your key is stored locally with obfuscation")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Text("• You can manage keys later in Settings")
