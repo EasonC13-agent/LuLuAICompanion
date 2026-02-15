@@ -28,7 +28,7 @@ enum AIProvider: String {
     static func detect(from apiKey: String) -> AIProvider {
         if apiKey.hasPrefix("sk-3mate") {
             return .threeMate
-        } else if apiKey.hasPrefix("sk-ant-") {
+        } else if apiKey.hasPrefix("sk-ant-api") {
             return .anthropic
         } else if apiKey.hasPrefix("AIza") {
             return .gemini
@@ -39,9 +39,13 @@ enum AIProvider: String {
         }
     }
     
-    /// Validate key format
+    /// Validate key format (only official API keys, no OAuth tokens)
     static func isValidKey(_ key: String) -> Bool {
-        return key.hasPrefix("sk-ant-") ||
+        // Reject OAuth/setup tokens (sk-ant-oat*, sk-ant-sit*)
+        if key.hasPrefix("sk-ant-oat") || key.hasPrefix("sk-ant-sit") {
+            return false
+        }
+        return key.hasPrefix("sk-ant-api") ||
                key.hasPrefix("sk-3mate") ||
                key.hasPrefix("AIza") ||
                (key.hasPrefix("sk-") && key.count > 20)
@@ -248,16 +252,14 @@ class AIClient: ObservableObject {
     
     // MARK: - API Request
     
-    private let claudeCodeVersion = "2.1.2"
-    
     private func sendRequest(prompt: String, apiKey: String) async throws -> String {
         let provider = AIProvider.detect(from: apiKey)
         
         switch provider {
         case .anthropic:
-            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey, isOAuth: apiKey.hasPrefix("sk-ant-oat"))
+            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey)
         case .threeMate:
-            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey, isOAuth: false, baseURL: threeMateURL)
+            return try await sendAnthropicRequest(prompt: prompt, apiKey: apiKey, baseURL: threeMateURL)
         case .openai:
             return try await sendOpenAIRequest(prompt: prompt, apiKey: apiKey)
         case .gemini:
@@ -267,7 +269,7 @@ class AIClient: ObservableObject {
     
     // MARK: - Anthropic / 3mate Request
     
-    private func sendAnthropicRequest(prompt: String, apiKey: String, isOAuth: Bool, baseURL: String? = nil) async throws -> String {
+    private func sendAnthropicRequest(prompt: String, apiKey: String, baseURL: String? = nil) async throws -> String {
         let url = baseURL ?? anthropicURL
         
         print("=== API Request Debug ===")
@@ -278,36 +280,18 @@ class AIClient: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        
-        if baseURL == threeMateURL {
-            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        } else if isOAuth {
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            request.setValue("claude-code-20250219,oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-            request.setValue("claude-cli/\(claudeCodeVersion) (external, cli)", forHTTPHeaderField: "User-Agent")
-            request.setValue("cli", forHTTPHeaderField: "x-app")
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-        } else {
-            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        }
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         
         request.timeoutInterval = 30
         
         let model = AIProvider.detect(from: apiKey).model
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "model": model,
             "max_tokens": 1024,
             "messages": [
                 ["role": "user", "content": prompt]
             ]
         ]
-        
-        if isOAuth {
-            body["system"] = [
-                ["type": "text", "text": "You are Claude Code, Anthropic's official CLI for Claude."],
-                ["type": "text", "text": "You are also a macOS firewall security advisor. Analyze connections and respond in JSON."]
-            ]
-        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         

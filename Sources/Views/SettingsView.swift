@@ -149,7 +149,7 @@ struct SettingsView: View {
                         .font(.caption2)
                     }
                     
-                    Text("Supports Anthropic (sk-ant-), OpenAI (sk-), Gemini (AIza), and 3mate keys. Multiple keys provide automatic failover.")
+                    Text("Supports Anthropic API keys (sk-ant-api-), OpenAI (sk-), Gemini (AIza), and 3mate keys. OAuth/setup tokens are not accepted.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -238,7 +238,7 @@ struct SettingsView: View {
         let cleanedKey = newApiKey.components(separatedBy: .whitespacesAndNewlines).joined()
         
         if !AIProvider.isValidKey(cleanedKey) {
-            saveStatus = "❌ Invalid format (use sk-ant-, sk-, AIza, or sk-3mate-)"
+            saveStatus = "❌ Invalid format (use sk-ant-api-, sk-, AIza, or sk-3mate-). OAuth tokens not supported."
             return
         }
         

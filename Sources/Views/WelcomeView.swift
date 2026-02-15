@@ -374,7 +374,7 @@ struct WelcomeView: View {
     
     private func verifyKey() {
         guard AIProvider.isValidKey(apiKey) else {
-            errorMessage = "Invalid key format. Supported: sk-ant- (Anthropic), sk- (OpenAI), AIza (Gemini), sk-3mate- (3mate)"
+            errorMessage = "Invalid key format. Supported: sk-ant-api- (Anthropic), sk- (OpenAI), AIza (Gemini), sk-3mate- (3mate). OAuth/setup tokens not accepted."
             return
         }
         
